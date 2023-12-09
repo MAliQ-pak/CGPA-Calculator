@@ -2,7 +2,7 @@
 Aspiring student developer | Python enthusiast
 
 Project Overview:
-The "Personal CGPA per Semester Calculator" is a Python-based tool designed to streamline the process of calculating semester-wise CGPA. With a user-friendly interface, the program prompts users to input their GPA and credit hours for each course in a specific semester. It then computes the Cumulative Grade Point Average (CGPA) based on the provided data. The project aims to empower students with a convenient and efficient tool for tracking academic performance, providing insights into their progress over multiple semesters.
+The "Personal CGPA per Semester Calculator" is a Python-based tool designed to streamline the process of calculating semester-wise CGPA. With a user-friendly interface, the program prompts users to input their marks for each course in a specific semester. It then computes the Cumulative Grade Point Average (CGPA) based on the provided data. The project aims to empower students with a convenient and efficient tool for tracking academic performance, providing insights into their progress over multiple semesters.
 
 Key Features:
 Interactive input for GPA and credit hours per course.
