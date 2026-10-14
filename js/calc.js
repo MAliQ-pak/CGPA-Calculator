@@ -416,6 +416,32 @@ export function sameNameEarlier(data, course) {
   return null;
 }
 
+// ---------- what if ----------
+
+// Results if the courses in `overrides` (courseId → grade) got those grades. Nothing is changed.
+export function whatIf(data, semId, overrides) {
+  const copy = normalize(serialize(data));
+  const sem = copy.semesters.find((x) => x.id === semId);
+  if (sem) {
+    for (const c of sem.courses) {
+      const g = overrides[c.id];
+      if (!g) continue;
+      c.marks = '';
+      c.grade = g;
+      delete c.assessments;
+    }
+  }
+  return { semester: sem ? semesterTotals(copy, sem) : null, overall: overallTotals(copy) };
+}
+
+// The grade a breakdown is on pace for, or null when nothing is marked yet.
+export function paceGrade(data, c) {
+  if (!hasBreakdown(c)) return null;
+  const s = assessmentSummary(c);
+  if (s.problem || s.percentSoFar === null) return null;
+  return sortedScale(data).find((g) => s.percentSoFar >= g.min) || null;
+}
+
 // GPA needed over `next` credit hours to reach `target`.
 export function requiredGPA(data, target, next) {
   const t = overallTotals(data);

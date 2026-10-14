@@ -1,6 +1,10 @@
 import { store, changed } from '../store.js';
-import { overallTotals, requiredGPA, sortedScale, parseNum, maxGP, fmt, fmtCredits } from '../calc.js';
+import { overallTotals, requiredGPA, sortedScale, parseNum, maxGP, fmt, fmtCredits, whatIf, paceGrade, evaluateCourse, semesterTotals } from '../calc.js';
 import { el, icon } from '../ui.js';
+
+// What-if grades live only while the app is open; they are never saved.
+const whatIfGrades = new Map(); // semesterId → { courseId: grade }
+let whatIfSemester = null;
 
 export function renderPlanner(root) {
   const data = store.data;
@@ -98,5 +102,116 @@ export function renderPlanner(root) {
     ),
   );
 
+  root.append(whatIfCard(data));
   render(false);
+}
+
+function whatIfCard(data) {
+  const card = el('section', { class: 'card whatif' });
+  const head = el('div', { class: 'card-head' }, el('div', {},
+    el('h3', {}, 'What if…'),
+    el('p', { class: 'card-sub' }, 'Try grades for a semester’s courses and see where your GPA and CGPA would land. Nothing here is saved.')));
+
+  if (!data.semesters.length) {
+    card.append(head, el('p', { class: 'muted' }, 'Add a semester first, then come back to try out grades.'));
+    return card;
+  }
+
+  // Default to the latest semester that still has courses without a grade.
+  if (!data.semesters.some((x) => x.id === whatIfSemester)) {
+    const open = [...data.semesters].reverse().find((x) => semesterTotals(data, x).pending > 0);
+    whatIfSemester = (open || data.semesters[data.semesters.length - 1]).id;
+  }
+
+  const select = el('select', { 'aria-label': 'Semester' });
+  data.semesters.forEach((x) => select.append(el('option', { value: x.id }, x.name || 'Untitled semester')));
+  select.value = whatIfSemester;
+  select.addEventListener('change', () => {
+    whatIfSemester = select.value;
+    draw();
+  });
+
+  const rows = el('div', { class: 'whatif-rows' });
+  const results = el('div', { class: 'whatif-results', 'aria-live': 'polite' });
+  const tools = el('div', { class: 'btn-row' });
+  const scale = sortedScale(data);
+
+  function overrides() {
+    if (!whatIfGrades.has(whatIfSemester)) whatIfGrades.set(whatIfSemester, {});
+    return whatIfGrades.get(whatIfSemester);
+  }
+
+  function draw() {
+    const sem = data.semesters.find((x) => x.id === whatIfSemester);
+    const o = overrides();
+    rows.replaceChildren(el('div', { class: 'whatif-row whatif-head', 'aria-hidden': 'true' },
+      el('span', {}, 'Course'), el('span', {}, 'Now'), el('span', {}, 'What if')));
+    let paceAvailable = false;
+    for (const c of sem.courses) {
+      const r = evaluateCourse(data, c);
+      const pace = r && r.gp !== undefined ? null : paceGrade(data, c);
+      if (pace) paceAvailable = true;
+      const now = r && r.gp !== undefined ? r.grade : pace ? `On pace for ${pace.grade}` : 'No grade yet';
+      const pick = el('select', { 'aria-label': `What-if grade for ${c.name || 'course'}` });
+      pick.append(el('option', { value: '' }, r && r.gp !== undefined ? `Keep ${r.grade}` : 'Not counted'));
+      for (const g of scale) pick.append(el('option', { value: g.grade }, `${g.grade} · ${Number(g.gp.toFixed(2))}`));
+      pick.value = o[c.id] || '';
+      pick.classList.toggle('changed', Boolean(o[c.id]));
+      pick.addEventListener('change', () => {
+        if (pick.value) o[c.id] = pick.value;
+        else delete o[c.id];
+        pick.classList.toggle('changed', Boolean(pick.value));
+        drawResults();
+      });
+      rows.append(el('div', { class: 'whatif-row' },
+        el('span', { class: 'whatif-name' }, el('strong', {}, c.name || 'Untitled course'), el('span', { class: 'muted small' }, ` · ${c.credits || 0} cr`)),
+        el('span', { class: `whatif-now${r && r.gp !== undefined ? '' : ' muted'}` }, now),
+        pick,
+      ));
+    }
+    if (!sem.courses.length) rows.append(el('p', { class: 'muted' }, 'This semester has no courses yet.'));
+
+    tools.replaceChildren(
+      paceAvailable ? el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => {
+        for (const c of sem.courses) {
+          const r = evaluateCourse(data, c);
+          const pace = r && r.gp !== undefined ? null : paceGrade(data, c);
+          if (pace) o[c.id] = pace.grade;
+        }
+        draw();
+      } }, 'Use on-pace grades') : null,
+      el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => {
+        whatIfGrades.set(whatIfSemester, {});
+        draw();
+      } }, 'Reset'),
+    );
+    drawResults();
+  }
+
+  function drawResults() {
+    const sem = data.semesters.find((x) => x.id === whatIfSemester);
+    const actualSem = semesterTotals(data, sem);
+    const actual = overallTotals(data);
+    const next = whatIf(data, whatIfSemester, overrides());
+    const box = (label, value, base) => {
+      const delta = value !== null && base !== null ? value - base : null;
+      const shown = delta === null || Math.abs(delta) < 0.005 ? null : delta;
+      return el('div', { class: 'whatif-stat' },
+        el('span', { class: 'stat-label' }, label),
+        el('span', { class: 'stat-value' }, fmt(value)),
+        el('span', { class: 'stat-sub' }, base === null ? 'No grades yet' : `Now ${fmt(base)}`,
+          shown !== null ? el('span', { class: `delta-inline ${shown > 0 ? 'up' : 'down'}` }, ` ${shown > 0 ? '+' : '−'}${Math.abs(shown).toFixed(2)}`) : null),
+      );
+    };
+    results.replaceChildren(
+      box(`${sem.name || 'Semester'} GPA`, next.semester.gpa, actualSem.gpa),
+      box('CGPA', next.overall.cgpa, actual.cgpa),
+    );
+  }
+
+  card.append(head,
+    el('label', { class: 'field narrow' }, el('span', {}, 'Semester'), select),
+    rows, tools, results);
+  draw();
+  return card;
 }

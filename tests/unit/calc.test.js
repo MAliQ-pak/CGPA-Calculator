@@ -287,3 +287,35 @@ test('same-name courses in earlier semesters are found for suggestions', () => {
   assert.equal(normalize({ retakePolicy: 'best' }).retakePolicy, 'best');
   assert.equal(normalize({ retakePolicy: 'weird' }).retakePolicy, 'latest');
 });
+
+// ---------- what if ----------
+import { whatIf, paceGrade } from '../../js/calc.js';
+
+test('what-if grades change results without touching the data', () => {
+  const d = freshData();
+  d.semesters = [
+    { id: 's1', name: 'S1', courses: [{ id: 'a', name: 'A', credits: '3', marks: '85', grade: '' }] }, // 12 / 3
+    { id: 's2', name: 'S2', courses: [{ id: 'b', name: 'B', credits: '4', marks: '', grade: '' }, { id: 'c', name: 'C', credits: '3', marks: '65', grade: '' }] },
+  ];
+  const before = JSON.stringify(d);
+  let r = whatIf(d, 's2', {});
+  close(r.semester.gpa, 3);
+  close(r.overall.cgpa, 21 / 6);
+  r = whatIf(d, 's2', { b: 'A', c: 'C' }); // 16 + 6 over 7; overall 34 / 10
+  close(r.semester.gpa, 22 / 7);
+  close(r.overall.cgpa, 3.4);
+  assert.equal(JSON.stringify(d), before, 'data unchanged');
+  assert.equal(whatIf(d, 'nope', {}).semester, null);
+});
+
+test('what-if respects retakes and replaces breakdowns', () => {
+  const d = freshData();
+  d.semesters = [
+    { id: 's1', name: 'S1', courses: [{ id: 'f', name: 'Calc', credits: '3', marks: '30', grade: '' }] },
+    { id: 's2', name: 'S2', courses: [{ id: 'r', name: 'Calc', credits: '3', marks: '', grade: '', retakeOf: 'f', assessments: [{ id: 'x', name: 'Mid', weight: '50', obtained: '45', total: '50' }, { id: 'y', name: 'Final', weight: '50', obtained: '', total: '' }] }] },
+  ];
+  assert.equal(paceGrade(d, d.semesters[1].courses[0]).grade, 'A', '90% so far');
+  close(overallTotals(d).cgpa, 0);
+  close(whatIf(d, 's2', { r: 'B' }).overall.cgpa, 3, 'the retake replaces the F');
+  assert.equal(paceGrade(d, { assessments: [{ name: 'Final', weight: '100', obtained: '', total: '' }] }), null);
+});

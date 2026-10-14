@@ -15,6 +15,7 @@ GradePoint started as a Python script I wrote in my first semester to work out m
 - **Repeated courses:** mark a course as a retake of an earlier one (same-name courses are suggested). Only one attempt counts toward CGPA, the latest or the best (your choice in Settings), while semester GPAs stay as they were.
 - **Marks breakdown:** track quizzes, assignments, mid-terms and the final for any course as you get them back. See your running total and pace, and the percentage you need on the remaining work for each grade. Once everything is in, the total becomes the course's marks.
 - **Planner:** the GPA you need over your next credit hours to reach a target CGPA, plus a table of common targets.
+- **What if:** try grades for a semester's courses, including ones still in progress (with "on pace" grades from the marks breakdown), and see the resulting semester GPA and CGPA. Nothing is saved.
 - **Settings:** edit your name, choose a light, dark or system theme, edit the grading scale to match your university, download or restore a backup, and delete your account.
 - Saves automatically, keeps working offline (changes sync when you're back online), and works on phones. It can be added to a home screen like an app.
 

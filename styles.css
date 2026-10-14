@@ -766,3 +766,27 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 .retake-dialog { max-height: 65vh; overflow-y: auto; padding: 0 2px 4px; margin: 0 -2px; }
 .retake-dialog .dialog-section:first-of-type { margin-top: 4px; }
 .policy-options { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- what if ---------- */
+.whatif { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+.whatif .card-head { margin-bottom: 0; }
+.whatif-rows { display: flex; flex-direction: column; }
+.whatif-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 170px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.whatif-head { font-size: 0.78rem; font-weight: 600; color: var(--muted); border-top: 0; padding-top: 0; }
+.whatif-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.whatif-now { font-size: 0.9rem; }
+.whatif-row select.changed { border-color: var(--accent); background-color: var(--accent-soft); color: var(--accent-soft-text); font-weight: 600; }
+.whatif-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.whatif-stat { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: var(--radius); background: var(--honey-soft); }
+.whatif-stat .stat-value { font-size: 1.9rem; }
+.delta-inline { font-weight: 700; }
+.delta-inline.up { color: var(--good); }
+.delta-inline.down { color: var(--danger); }
+
+@media (max-width: 560px) {
+  .whatif-row { grid-template-columns: 1fr 1fr; grid-template-areas: "name name" "now pick"; gap: 4px 10px; }
+  .whatif-head { display: none; }
+  .whatif-name { grid-area: name; white-space: normal; }
+  .whatif-now { grid-area: now; }
+  .whatif-row select { grid-area: pick; }
+}
