@@ -128,3 +128,58 @@ test('default program and program courses', () => {
   assert.notEqual(copies[0].id, d.program.semesters[6].courses[0].id, 'copies get their own ids');
   assert.deepEqual(programCourses(d, 99), []);
 });
+
+// ---------- marks breakdown ----------
+import { assessmentSummary, courseMarks, neededPercent, hasBreakdown } from '../../js/calc.js';
+
+const item = (name, weight, obtained = '', total = '') => ({ id: name, name, weight: String(weight), obtained: String(obtained), total: String(total) });
+
+test('breakdown: running total, pace and what is left', () => {
+  const c = { credits: '3', marks: '', grade: '', assessments: [
+    item('Quizzes', 10, 8, 10), // 8
+    item('Assignments', 10, 18, 20), // 9
+    item('Mid 1', 15, 21, 30), // 10.5
+    item('Mid 2', 15),
+    item('Final', 50),
+  ] };
+  const s = assessmentSummary(c);
+  assert.equal(s.weightTotal, 100);
+  assert.equal(s.gradedWeight, 35);
+  assert.equal(s.earned, 27.5);
+  assert.equal(s.remaining, 65);
+  close(s.percentSoFar, (27.5 / 35) * 100);
+  assert.equal(s.complete, false);
+  assert.equal(courseMarks(c), null, 'an unfinished breakdown does not count yet');
+  assert.equal(evaluateCourse(freshData(), c), null);
+
+  // A needs 80: (80 − 27.5) / 65 = 80.77% of the remaining work
+  const a = neededPercent(s, 80);
+  assert.equal(a.status, 'needed');
+  close(a.pct, (52.5 / 65) * 100);
+  assert.equal(neededPercent(s, 20).status, 'secured');
+  assert.equal(neededPercent({ earned: 10, remaining: 20 }, 80).status, 'impossible');
+});
+
+test('breakdown: a complete breakdown sets the course marks', () => {
+  const c = { credits: '3', marks: '12', grade: '', assessments: [item('Sessionals', 50, 40, 50), item('Final', 50, 41, 50)] };
+  assert.ok(hasBreakdown(c));
+  assert.equal(assessmentSummary(c).complete, true);
+  assert.equal(courseMarks(c), 81, 'typed marks are ignored when there is a breakdown');
+  assert.equal(evaluateCourse(freshData(), c).gp, 4);
+});
+
+test('breakdown: problems are reported and stop the course counting', () => {
+  const over = { credits: '3', assessments: [item('Mid', 60, 50, 60), item('Final', 50, 40, 50)] };
+  assert.match(assessmentSummary(over).problem, /more than 100%/);
+  assert.match(evaluateCourse(freshData(), over).error, /more than 100%/);
+  const tooHigh = { credits: '3', assessments: [item('Quiz', 100, 12, 10)] };
+  assert.match(evaluateCourse(freshData(), tooHigh).error, /between 0 and 10/);
+  const short = { credits: '3', assessments: [item('Mid', 40, 30, 40), item('Final', 50, 40, 50)] };
+  assert.equal(assessmentSummary(short).complete, false, 'weights must reach 100%');
+});
+
+test('breakdown survives normalize; courses without one stay unchanged', () => {
+  const n = normalize({ semesters: [{ courses: [{ name: 'A', credits: 3, assessments: [{ name: 'Final', weight: 50, obtained: 40, total: 50 }] }, { name: 'B', credits: 3 }] }] });
+  assert.deepEqual(n.semesters[0].courses[0].assessments.map((a) => [a.name, a.weight, a.obtained, a.total]), [['Final', '50', '40', '50']]);
+  assert.equal('assessments' in n.semesters[0].courses[1], false);
+});

@@ -84,6 +84,9 @@ export function normalize(data) {
             credits: str(c.credits),
             marks: str(c.marks),
             grade: str(c.grade),
+            ...(Array.isArray(c.assessments) && c.assessments.length
+              ? { assessments: c.assessments.map((a) => ({ id: str(a.id) || uid(), name: str(a.name), weight: str(a.weight), obtained: str(a.obtained), total: str(a.total) })) }
+              : {}),
           }))
         : [],
     }));
@@ -145,7 +148,11 @@ export function scaleProblem(data) {
 // filled in wrongly, or null when it's still empty.
 export function evaluateCourse(data, c) {
   const credits = parseNum(c.credits);
-  const marks = parseNum(c.marks);
+  const marks = courseMarks(c);
+  if (hasBreakdown(c)) {
+    const problem = assessmentSummary(c).problem;
+    if (problem) return { error: problem };
+  }
   let g;
   if (marks !== null) {
     if (marks < 0 || marks > 100) return { error: 'Marks must be 0–100' };
@@ -160,6 +167,67 @@ export function evaluateCourse(data, c) {
   if (credits === null || credits <= 0) return { grade: g.grade, error: 'Add credit hours' };
   return { gp: g.gp, grade: g.grade, credits };
 }
+
+// ---------- marks breakdown (quizzes, mids, final…) ----------
+
+// A typical split to start from; every university differs, so it's fully editable.
+export const COMMON_SPLIT = [['Assignments', 10], ['Quizzes', 10], ['Mid-term 1', 15], ['Mid-term 2', 15], ['Final exam', 50]];
+
+export function hasBreakdown(c) {
+  return Array.isArray(c.assessments) && c.assessments.length > 0;
+}
+
+// Weights are percentages of the course; each item's obtained/total is scaled to its weight.
+export function assessmentSummary(c) {
+  const items = c.assessments || [];
+  let weightTotal = 0;
+  let gradedWeight = 0;
+  let earned = 0;
+  let graded = 0;
+  let problem = '';
+  for (const a of items) {
+    const w = parseNum(a.weight);
+    const got = parseNum(a.obtained);
+    const out = parseNum(a.total);
+    if (w !== null && w > 0) weightTotal += w;
+    if (w === null || w <= 0 || got === null || out === null || out <= 0) continue;
+    if (got < 0 || got > out) {
+      problem = `${a.name || 'An item'}: marks must be between 0 and ${out}`;
+      continue;
+    }
+    graded += 1;
+    gradedWeight += w;
+    earned += (w * got) / out;
+  }
+  if (!problem && weightTotal > 100.001) problem = `Weights add up to ${round2(weightTotal)}%, more than 100%`;
+  const complete = !problem && items.length > 0 && graded === items.length && Math.abs(weightTotal - 100) < 0.001;
+  return {
+    weightTotal: round2(weightTotal),
+    gradedWeight: round2(gradedWeight),
+    earned: round2(earned),
+    remaining: round2(Math.max(0, 100 - gradedWeight)),
+    percentSoFar: gradedWeight > 0 ? (earned / gradedWeight) * 100 : null,
+    complete,
+    problem,
+  };
+}
+
+// The marks a course counts with: its breakdown total once complete, otherwise what was typed.
+export function courseMarks(c) {
+  if (!hasBreakdown(c)) return parseNum(c.marks);
+  const s = assessmentSummary(c);
+  return s.complete ? s.earned : null;
+}
+
+// Percentage needed on the remaining work to finish with at least `min` marks.
+export function neededPercent(summary, min) {
+  if (summary.earned >= min - 1e-9) return { status: 'secured' };
+  if (summary.remaining <= 0) return { status: 'impossible' };
+  const pct = ((min - summary.earned) / summary.remaining) * 100;
+  return pct > 100 + 1e-9 ? { status: 'impossible' } : { status: 'needed', pct };
+}
+
+const round2 = (n) => Math.round(n * 100) / 100;
 
 export function semesterTotals(data, sem) {
   let points = 0;
