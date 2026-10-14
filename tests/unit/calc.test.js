@@ -218,3 +218,72 @@ test('shared programs carry course names and credits only', () => {
   assert.ok(copy.semesters[0].id && copy.semesters[0].courses[0].id);
   assert.deepEqual(programFromShared({}, 'X').semesters, []);
 });
+
+// ---------- repeated courses ----------
+import { retakeInfo, retakeTarget, sameNameEarlier } from '../../js/calc.js';
+
+function retakeData(policy = 'latest') {
+  const d = freshData();
+  d.retakePolicy = policy;
+  d.semesters = [
+    { id: 's1', name: 'Semester 1', courses: [{ id: 'calc1', name: 'Calculus', credits: '3', marks: '45', grade: '' }, { id: 'itc', name: 'ITC', credits: '3', marks: '85', grade: '' }] },
+    { id: 's2', name: 'Semester 2', courses: [{ id: 'calc2', name: 'Calculus', credits: '3', marks: '72', grade: '', retakeOf: 'calc1' }, { id: 'oop', name: 'OOP', credits: '4', marks: '65', grade: '' }] },
+  ];
+  return d;
+}
+
+test('a retake replaces the earlier attempt in CGPA but not in its semester GPA', () => {
+  const d = retakeData();
+  // Without retakes: (0 + 12 + 10.5 + 12) / 13. With the retake, Calculus' F (3 credits) drops out: 34.5 / 10
+  close(overallTotals(d).cgpa, 34.5 / 10);
+  assert.equal(overallTotals(d).credits, 10);
+  close(semesterTotals(d, d.semesters[0]).gpa, 2, 'semester 1 GPA still shows the F');
+  const h = history(d);
+  close(h[0].cgpa, 2);
+  close(h[1].cgpa, 3.45);
+});
+
+test('best-attempt policy keeps the better grade', () => {
+  const d = retakeData('best');
+  d.semesters[1].courses[0].marks = '30'; // retake went worse
+  close(overallTotals(d).cgpa, (0 + 12 + 12) / 10, 'both F: either counts once');
+  d.semesters[0].courses[0].marks = '62'; // first attempt B
+  close(overallTotals(d).cgpa, (9 + 12 + 12) / 10, 'B from the first attempt counts');
+  d.retakePolicy = 'latest';
+  close(overallTotals(d).cgpa, (0 + 12 + 12) / 10, 'latest policy uses the F');
+});
+
+test('retakes of retakes count once; ungraded retakes leave the original counting', () => {
+  const d = retakeData();
+  d.semesters.push({ id: 's3', name: 'Semester 3', courses: [{ id: 'calc3', name: 'Calculus', credits: '3', marks: '', grade: '', retakeOf: 'calc2' }] });
+  close(overallTotals(d).cgpa, 3.45, 'third attempt not graded yet');
+  d.semesters[2].courses[0].marks = '90';
+  close(overallTotals(d).cgpa, (12 + 12 + 12) / 10);
+  const info = retakeInfo(d);
+  assert.equal(info.get('calc1').notCounted, true);
+  assert.equal(info.get('calc2').notCounted, true);
+  assert.equal(info.get('calc2').replacedBy.course.id, 'calc3');
+  assert.equal(info.get('calc3').retakeOf.course.id, 'calc2');
+  assert.equal(info.get('itc'), undefined);
+});
+
+test('invalid retake links are ignored', () => {
+  const d = retakeData();
+  d.semesters[1].courses[0].retakeOf = 'missing';
+  close(overallTotals(d).cgpa, 34.5 / 13);
+  d.semesters[1].courses[0].retakeOf = 'calc1';
+  [d.semesters[0], d.semesters[1]] = [d.semesters[1], d.semesters[0]]; // retake now comes first
+  assert.equal(retakeTarget(d, d.semesters[0].courses[0]), null);
+  close(overallTotals(d).cgpa, 34.5 / 13);
+});
+
+test('same-name courses in earlier semesters are found for suggestions', () => {
+  const d = retakeData();
+  delete d.semesters[1].courses[0].retakeOf;
+  assert.equal(sameNameEarlier(d, d.semesters[1].courses[0]).course.id, 'calc1');
+  assert.equal(sameNameEarlier(d, d.semesters[1].courses[1]), null);
+  assert.equal(sameNameEarlier(d, d.semesters[0].courses[0]), null);
+  assert.equal(normalize({ semesters: [{ courses: [{ name: 'X', retakeOf: 'a' }] }] }).semesters[0].courses[0].retakeOf, 'a');
+  assert.equal(normalize({ retakePolicy: 'best' }).retakePolicy, 'best');
+  assert.equal(normalize({ retakePolicy: 'weird' }).retakePolicy, 'latest');
+});

@@ -1,7 +1,8 @@
 import { store, changed } from '../store.js';
 import {
   uid, blankCourse, programCourses, programCredits, evaluateCourse,
-  hasBreakdown, assessmentSummary, courseMarks, neededPercent, COMMON_SPLIT, semesterTotals, overallTotals,
+  hasBreakdown, assessmentSummary, courseMarks, neededPercent, COMMON_SPLIT,
+  retakeInfo, retakeTarget, sameNameEarlier, semesterTotals, overallTotals,
   sortedScale, parseNum, maxGP, fmt, fmtCredits,
 } from '../calc.js';
 import { el, icon, openDialog, confirmDialog, toast } from '../ui.js';
@@ -48,6 +49,38 @@ export function renderSemesters(root) {
       el('div', { class: 'summary-item' }, el('span', {}, 'CGPA'), el('strong', {}, fmt(t.cgpa))),
       el('div', { class: 'summary-item' }, el('span', {}, 'Credit hours'), el('strong', {}, fmtCredits(t.credits))),
     );
+    refreshRetakeNotes();
+  }
+
+  // Retake status depends on every semester, so all visible rows are refreshed together.
+  function refreshRetakeNotes() {
+    const info = retakeInfo(data);
+    const byId = new Map();
+    data.semesters.forEach((sem) => sem.courses.forEach((c) => byId.set(c.id, c)));
+    for (const row of list.querySelectorAll('.course-row[data-course]')) {
+      const c = byId.get(row.dataset.course);
+      if (!c) continue;
+      const i = info.get(c.id) || {};
+      const note = row.querySelector('[data-role="retake"]');
+      const semName = (loc) => data.semesters[loc.semIndex].name || `Semester ${loc.semIndex + 1}`;
+      const parts = [];
+      if (i.retakeOf) {
+        parts.push(el('span', { class: 'retake-chip' }, icon('repeat', 14), `Retake of ${i.retakeOf.course.name || 'a course'} (${semName(i.retakeOf)})`),
+          el('button', { type: 'button', class: 'link small', dataset: { action: 'retake-clear' } }, 'Not a retake'));
+      }
+      if (i.notCounted) {
+        parts.push(el('span', { class: 'retake-off' }, 'Not counted in CGPA',
+          i.replacedBy ? ` · the attempt in ${semName(i.replacedBy)} counts instead` : ''));
+      } else if (!i.retakeOf) {
+        const earlier = sameNameEarlier(data, c);
+        if (earlier) {
+          parts.push(el('span', { class: 'muted' }, `Taken before in ${semName(earlier)}`),
+            el('button', { type: 'button', class: 'link small', dataset: { action: 'retake-set', target: earlier.course.id } }, 'Mark as retake'));
+        }
+      }
+      note.replaceChildren(...parts);
+      row.querySelector('[data-action="retake-pick"]').classList.toggle('has-retake', Boolean(i.retakeOf));
+    }
   }
 
   function renderList() {
@@ -62,6 +95,7 @@ export function renderSemesters(root) {
       return;
     }
     data.semesters.forEach((s, i) => list.append(semesterCard(s, i)));
+    refreshRetakeNotes();
   }
 
   function semesterCard(sem, index) {
@@ -130,7 +164,23 @@ export function renderSemesters(root) {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const idx = data.semesters.indexOf(sem);
+      const rowEl = btn.closest('[data-course]');
+      const course = rowEl && sem.courses.find((x) => x.id === rowEl.dataset.course);
       switch (btn.dataset.action) {
+        case 'retake-pick':
+          retakeDialog(course);
+          return;
+        case 'retake-set':
+          course.retakeOf = btn.dataset.target;
+          changed();
+          renderSummary();
+          toast(`${course.name || 'Course'} marked as a retake`, 'success');
+          return;
+        case 'retake-clear':
+          delete course.retakeOf;
+          changed();
+          renderSummary();
+          return;
         case 'course-add': {
           const c = blankCourse();
           sem.courses.push(c);
@@ -207,10 +257,12 @@ export function renderSemesters(root) {
       ),
       el('label', { class: 'cell cell-grade' }, el('span', { class: 'cell-label' }, 'Grade'), select),
       el('div', { class: 'row-actions' },
+        el('button', { type: 'button', class: 'icon-btn retake-btn', title: 'Retake of an earlier course?', dataset: { action: 'retake-pick' } }, icon('repeat', 18)),
         toggle,
         el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove course', 'aria-label': `Remove ${c.name || 'course'}`, dataset: { action: 'course-remove' } }, icon('x', 18)),
       ),
       el('p', { class: 'row-error', dataset: { role: 'error' } }),
+      el('div', { class: 'row-note', dataset: { role: 'retake' } }),
     );
     toggle.addEventListener('click', () => {
       if (openBreakdowns.has(c.id)) openBreakdowns.delete(c.id);
@@ -226,6 +278,7 @@ export function renderSemesters(root) {
     const label = c.name || 'course';
     row.querySelector('[data-action="course-remove"]').setAttribute('aria-label', `Remove ${label}`);
     row.querySelector('.breakdown-toggle').setAttribute('aria-label', `Marks breakdown for ${label}`);
+    row.querySelector('[data-action="retake-pick"]').setAttribute('aria-label', `Is ${label} a retake?`);
     row.querySelector('.breakdown-toggle').classList.toggle('has-breakdown', hasBreakdown(c));
     const r = evaluateCourse(data, c);
     const marksInput = row.querySelector('[data-field="marks"]');
@@ -396,6 +449,52 @@ export function renderSemesters(root) {
     return panel;
   }
 
+  function retakeDialog(course) {
+    const semIndex = data.semesters.findIndex((x) => x.courses.includes(course));
+    const current = retakeTarget(data, course);
+    const suggestion = sameNameEarlier(data, course);
+    openDialog({
+      title: `Is ${course.name || 'this course'} a retake?`,
+      wide: true,
+      build: (close) => {
+        const choose = (target) => {
+          if (target) course.retakeOf = target.id;
+          else delete course.retakeOf;
+          changed();
+          close();
+          renderSummary();
+          if (target) toast(`${course.name || 'Course'} marked as a retake of ${target.name || 'an earlier course'}`, 'success');
+        };
+        const policy = data.retakePolicy === 'best' ? 'the better grade counts' : 'the latest attempt counts';
+        const body = el('div', { class: 'retake-dialog' },
+          el('p', { class: 'dialog-text' }, `Pick the course you’re repeating. Only one attempt counts toward your CGPA (${policy}; change this in Settings). Semester GPAs stay as they were.`));
+        if (semIndex <= 0) {
+          body.append(el('p', { class: 'muted' }, 'Retakes link to a course in an earlier semester. Add the semester where you first took it, then come back here.'));
+          return body;
+        }
+        const option = (c, sIdx, tag) => el('button', {
+          type: 'button',
+          class: `retake-option${current && current.course === c ? ' selected' : ''}`,
+          onclick: () => choose(c),
+        },
+        el('span', {}, el('strong', {}, c.name || 'Untitled course'), tag ? el('span', { class: 'muted small' }, ` · ${data.semesters[sIdx].name || `Semester ${sIdx + 1}`}`) : null),
+        tag ? el('span', { class: 'tag' }, tag) : null);
+        if (suggestion) body.append(el('h3', { class: 'dialog-section' }, 'Same name'), option(suggestion.course, suggestion.semIndex, 'Suggested'));
+        for (let i = semIndex - 1; i >= 0; i--) {
+          const courses = data.semesters[i].courses.filter((c) => !suggestion || c !== suggestion.course);
+          if (!courses.length) continue;
+          body.append(el('h3', { class: 'dialog-section' }, data.semesters[i].name || `Semester ${i + 1}`),
+            el('div', { class: 'retake-options' }, courses.map((c) => option(c, i))));
+        }
+        if (current) {
+          body.append(el('div', { class: 'dialog-actions' },
+            el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => choose(null) }, 'Not a retake')));
+        }
+        return body;
+      },
+    });
+  }
+
   function refreshTotals(card, sem) {
     const t = semesterTotals(data, sem);
     card.querySelector('[data-role="gpa"]').textContent = `GPA ${fmt(t.gpa)}`;
@@ -483,8 +582,8 @@ export function renderSemesters(root) {
     );
   }
 
-  renderSummary();
   renderList();
+  renderSummary();
 
   if (openNext) {
     const card = list.querySelector(`[data-sem="${openNext}"]`);
