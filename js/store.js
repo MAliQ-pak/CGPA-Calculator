@@ -55,8 +55,12 @@ export function changed() {
   timer = setTimeout(flush, SAVE_DELAY);
 }
 
+// Files from before accounts had a setup or program keep the user's current ones.
 export function replaceData(data) {
-  store.data = normalize(data);
+  const next = normalize(data);
+  if (!data.profile) next.profile = store.data.profile;
+  if (!data.program) next.program = store.data.program;
+  store.data = next;
   changed();
 }
 
@@ -107,8 +111,10 @@ export function legacyData() {
   try {
     const raw = localStorage.getItem(LEGACY_KEY);
     if (!raw) return null;
-    const data = normalize(JSON.parse(raw));
-    return data.semesters.length || data.prior.cgpa ? data : null;
+    const saved = JSON.parse(raw);
+    const data = normalize(saved);
+    // Return the raw object so replaceData keeps the account's own setup and program.
+    return data.semesters.length || data.prior.cgpa ? saved : null;
   } catch (e) {
     return null;
   }

@@ -1,13 +1,15 @@
 import { store, changed, replaceData, flush, discardPending } from '../store.js';
-import { DEFAULT_SCALE, scaleProblem, serialize } from '../calc.js';
+import { serialize, programCredits, fmtCredits } from '../calc.js';
+import { scaleEditor } from './scale-editor.js';
 import { el, icon, avatar, toast, openDialog, confirmDialog } from '../ui.js';
 import { getTheme, setTheme } from '../theme.js';
 import * as backend from '../firebase.js';
 
-export function renderSettings(root, { refreshUser }) {
+export function renderSettings(root, { refreshUser, runSetup }) {
   root.append(
     el('div', { class: 'page-intro' }, el('h2', {}, 'Settings'), el('p', {}, 'Your profile, grading scale and data.')),
     profileSection(refreshUser),
+    programSection(runSetup),
     appearanceSection(),
     scaleSection(),
     dataSection(),
@@ -54,6 +56,24 @@ function profileSection(refreshUser) {
   );
 }
 
+function programSection(runSetup) {
+  const { program, profile } = store.data;
+  const credits = program.semesters.reduce((sum, s) => sum + programCredits(s), 0);
+  return section('Program & courses', 'Your degree’s courses, used to fill in new semesters.',
+    el('div', { class: 'program-summary' },
+      el('span', { class: 'option-icon' }, icon('book', 22)),
+      el('div', {},
+        el('strong', {}, [program.name || 'Your program', profile.university].filter(Boolean).join(' · ')),
+        el('div', { class: 'muted small' }, `${program.semesters.length} semesters · ${fmtCredits(credits)} credit hours · currently in Semester ${profile.currentSemester}`),
+      ),
+    ),
+    el('div', { class: 'btn-row' },
+      el('a', { href: '#/program', class: 'btn btn-primary btn-small' }, 'Edit courses'),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: runSetup }, 'Run setup again'),
+    ),
+  );
+}
+
 function appearanceSection() {
   const current = getTheme();
   const group = el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Theme' });
@@ -69,60 +89,8 @@ function appearanceSection() {
 }
 
 function scaleSection() {
-  const data = store.data;
-  const body = el('div', { class: 'scale-rows' });
-  const problem = el('p', { class: 'row-error' });
-
-  function render() {
-    body.replaceChildren(el('div', { class: 'scale-row scale-head', 'aria-hidden': 'true' },
-      el('span', {}, 'Min marks'), el('span', {}, 'Grade'), el('span', {}, 'Points'), el('span', {}),
-    ));
-    data.scale.forEach((g, i) => {
-      const row = el('div', { class: 'scale-row', dataset: { index: String(i) } },
-        el('input', { type: 'number', min: '0', max: '100', step: 'any', value: Number.isFinite(g.min) ? g.min : '', 'aria-label': 'Minimum marks', dataset: { field: 'min' } }),
-        el('input', { type: 'text', value: g.grade, 'aria-label': 'Grade', dataset: { field: 'grade' } }),
-        el('input', { type: 'number', min: '0', step: '0.01', value: Number.isFinite(g.gp) ? g.gp : '', 'aria-label': 'Grade points', dataset: { field: 'gp' } }),
-        el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove grade', dataset: { action: 'remove' }, disabled: data.scale.length <= 1 }, icon('x', 18)),
-      );
-      body.append(row);
-    });
-    problem.textContent = scaleProblem(data);
-  }
-
-  body.addEventListener('input', (e) => {
-    const row = e.target.closest('[data-index]');
-    if (!row) return;
-    const g = data.scale[Number(row.dataset.index)];
-    const f = e.target.dataset.field;
-    g[f] = f === 'grade' ? e.target.value : e.target.value === '' ? NaN : Number(e.target.value);
-    problem.textContent = scaleProblem(data);
-    changed();
-  });
-  body.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-action="remove"]');
-    if (!b) return;
-    data.scale.splice(Number(b.closest('[data-index]').dataset.index), 1);
-    changed();
-    render();
-  });
-
-  render();
   return section('Grading scale', 'Marks at or above the minimum get that grade. Match it to your university.',
-    body, problem,
-    el('div', { class: 'btn-row' },
-      el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => {
-        data.scale.push({ min: NaN, grade: '', gp: NaN });
-        changed();
-        render();
-        body.querySelector('.scale-row:last-child input').focus();
-      } }, icon('plus', 16), 'Add grade'),
-      el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: async () => {
-        if (!(await confirmDialog({ title: 'Reset grading scale?', message: 'Your scale goes back to the default (A 80+, B+ 70+, B 60+, C+ 55+, C 50+, F below 50).', confirmText: 'Reset' }))) return;
-        data.scale = DEFAULT_SCALE.map((g) => ({ ...g }));
-        changed();
-        render();
-      } }, 'Reset to default'),
-    ),
+    scaleEditor(store.data, { onChange: changed }),
   );
 }
 

@@ -7,8 +7,10 @@ GradePoint started as a Python script I wrote in my first semester to work out m
 
 ## Features
 - **Accounts:** sign in with Google or with email and password (password reset by email included). Each person's grades are private to their account and sync across devices.
+- **Quick setup after first sign-in:** one click for the default setup (BSCS courses and the standard grading scale), or a short guided setup: university, program, current semester, courses, grading scale, and an existing CGPA or past semesters. You can run it again from Settings.
+- **Your own program:** every account has its own course list for each semester, so adding a semester fills in the right courses. Rename, add or remove courses and semesters any time under Settings → Program & courses.
 - **Dashboard:** your CGPA, credit hours, latest and best semester GPA, and a progress chart of each semester's GPA and your CGPA after it.
-- **Semesters:** enter marks out of 100, or pick a grade directly. BSCS semester 1–8 presets come with courses and credit hours filled in, or start a blank semester for any course list. You can also start from an existing CGPA instead of entering old semesters.
+- **Semesters:** enter marks out of 100, or pick a grade directly. New semesters are filled in from your program, or start a blank one. Courses can be renamed, added and removed right in the list. You can also start from an existing CGPA instead of entering old semesters.
 - **Planner:** the GPA you need over your next credit hours to reach a target CGPA, plus a table of common targets.
 - **Settings:** edit your name, choose a light, dark or system theme, edit the grading scale to match your university, download or restore a backup, and delete your account.
 - Saves automatically, keeps working offline (changes sync when you're back online), and works on phones. It can be added to a home screen like an app.
@@ -20,7 +22,7 @@ Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Page
 | --- | --- |
 | `index.html`, `styles.css` | Page shell and styles |
 | `js/main.js` | Start-up, sign-in state, navigation |
-| `js/views/` | The sign-in screen and the Dashboard, Semesters, Planner and Settings pages |
+| `js/views/` | Sign-in, setup wizard, and the Dashboard, Semesters, Planner, Settings and Program & courses pages |
 | `js/calc.js` | GPA and CGPA calculations |
 | `js/store.js` | Holds your data and autosaves it |
 | `js/firebase.js` | Everything that talks to Firebase |
