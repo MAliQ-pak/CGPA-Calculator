@@ -1,65 +1,63 @@
+# Each course is listed once, together with its credit hours.
 Courses_and_Semesters = {
-    "courses_sem1":["ITC", "FOP", "English(1)", "Calculus", "Basic Electronics", "Islamic Studies"],
-    "courses_sem2":["DLD", "OOP", "English(2)", "Probability & Statistics", "Urdu", "Pakistan Studies"],
-    "courses_sem3":["CAO", "DSA", "English(3)", "Discrete Structures", "Differential Equations"],
-    "courses_sem4":["DAA", "Theory of Automata", "Database Systems", "Linear Algebra", "University Elective II"],
-    "courses_sem5":["Computer Networks", "Multi-variate Calculus", "Operating Systems", "ISE", "CS Elective 1"],
-    "courses_sem6":["AI", "Compiler Construction", "Numerical Computing", "CS Elective 2", "Professional Practices"],
-    "courses_sem7":["CS Elective 3", "CS Elective 4", "FYP 1", "University Elective III", "PDC"],
-    "courses_sem8":["CS Elective 5", "University Elective IV", "FYP 2", "Information Security"]
+    1: {"ITC": 3, "FOP": 4, "English(1)": 3, "Calculus": 3, "Basic Electronics": 3, "Islamic Studies": 2},
+    2: {"DLD": 4, "OOP": 4, "English(2)": 3, "Probability & Statistics": 3, "Urdu": 2, "Pakistan Studies": 2},
+    3: {"CAO": 4, "DSA": 4, "English(3)": 3, "Discrete Structures": 3, "Differential Equations": 3},
+    4: {"DAA": 3, "Theory of Automata": 3, "Database Systems": 4, "Linear Algebra": 3, "University Elective II": 3},
+    5: {"Computer Networks": 4, "Multi-variate Calculus": 3, "Operating Systems": 4, "ISE": 3, "CS Elective 1": 3},
+    6: {"AI": 4, "Compiler Construction": 3, "Numerical Computing": 3, "CS Elective 2": 3, "Professional Practices": 3},
+    7: {"CS Elective 3": 3, "CS Elective 4": 3, "FYP 1": 3, "University Elective III": 3, "PDC": 3},
+    8: {"CS Elective 5": 3, "University Elective IV": 3, "FYP 2": 3, "Information Security": 3},
 }
 
-sem = int(input("From 1 to 8 enter your semester: "))
 
 def GPA(marks):
-    gpa = 0
-    if 80 <= marks <= 100:
-        gpa = 4.0
-    elif 70 <= marks < 80:
-        gpa = 3.5
-    elif 60 <= marks < 70:
-        gpa = 3.0
-    elif 55 <= marks < 60:
-        gpa = 2.5
-    elif 50 <= marks < 55:
-        gpa = 2.0
-    elif 0 <= marks < 50:
-        print("GPA below 2.0")
-    else:
-        print("Invalid Marks! Try Again")
-    return gpa
-
-def credit_hours(Subject):
-    credit_hour = 0.0
-    if Subject in ["Islamic Studies","Urdu","Pakistan Studies"]:
-        credit_hour = 2.0
-    elif Subject in ["ITC","English(1)","Calculus","Basic Electronics","English(2)","Probability & Statistics","English(3)","Discrete Structures","Differential Equations","DAA","Theory of Automata","Linear Algebra","University Elective II","Multi-variate Calculus","ISE","CS Elective 1","Compiler Construction","Numerical Computing","CS Elective 2","Professional Practices","CS Elective 3","CS Elective 4""FYP 1","University Elective III","PDC","CS Elective 5","University Elective IV","FYP 2","Information Security"]:
-        credit_hour = 3.0
-    elif Subject in ["FOP","DLD", "OOP","CAO","DSA","Database Systems","Computer Networks","Operating Systems","AI"]:
-        credit_hour = 4.0
-    return credit_hour
+    if marks >= 80:
+        return 4.0
+    elif marks >= 70:
+        return 3.5
+    elif marks >= 60:
+        return 3.0
+    elif marks >= 55:
+        return 2.5
+    elif marks >= 50:
+        return 2.0
+    return 0.0
 
 
-if 1 <= sem <= 8:
-    sem_GPA_and_credit_hours = {}
-    print("\n", end="")
-    for course in Courses_and_Semesters[f"courses_sem{sem}"]:
-            marks = int(input(f"Enter your marks for {course}: "))
-            subject = course
-            sem_GPA_and_credit_hours[course] = {
-                'GPA': GPA(marks),
-            'credit hours': credit_hours(subject)
-            }
+def ask_number(prompt, low, high, cast=float, allow_blank=False):
+    """Keep asking until the user enters a number between low and high."""
+    while True:
+        text = input(prompt).strip()
+        if allow_blank and text == "":
+            return None
+        try:
+            value = cast(text)
+        except ValueError:
+            print("Please enter a number.")
+            continue
+        if low <= value <= high:
+            return value
+        print(f"Please enter a value from {low} to {high}.")
 
-    CGPA = 0.0
-    GPA_product = 0.0
-    sum_credit_hours = 0.0
 
-    for course, values in sem_GPA_and_credit_hours.items():
-        GPA_product += values['GPA'] * values['credit hours']
-        sum_credit_hours += values['credit hours']
+sem = ask_number("From 1 to 8 enter your semester: ", 1, 8, cast=int)
 
-    CGPA = GPA_product / sum_credit_hours
-    print(f"\nYour CGPA for the semester is {CGPA:.2f}")
-else:
-    print("Invalid Input")
+print()
+GPA_product = 0.0
+sum_credit_hours = 0.0
+for course, credit_hours in Courses_and_Semesters[sem].items():
+    marks = ask_number(f"Enter your marks for {course}: ", 0, 100)
+    GPA_product += GPA(marks) * credit_hours
+    sum_credit_hours += credit_hours
+
+semester_GPA = GPA_product / sum_credit_hours
+print(f"\nYour GPA for semester {sem} is {semester_GPA:.2f}")
+
+if sem > 1:
+    print("\nTo get your CGPA, enter your record before this semester (press Enter to skip).")
+    previous_CGPA = ask_number("Previous CGPA: ", 0, 4, allow_blank=True)
+    if previous_CGPA is not None:
+        previous_credits = ask_number("Total credit hours completed before this semester: ", 1, 1000)
+        CGPA = (previous_CGPA * previous_credits + GPA_product) / (previous_credits + sum_credit_hours)
+        print(f"Your CGPA after semester {sem} is {CGPA:.2f}")
