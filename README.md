@@ -1,33 +1,51 @@
-# CGPA-Calculator
+# GradePoint · CGPA Calculator
 Aspiring student developer | Python enthusiast
 
 **Live app:** https://maliq-pak.github.io/CGPA-Calculator/
 
-## Project Overview
-The "Personal CGPA per Semester Calculator" started as a Python script I wrote in my first semester to calculate my GPA and CGPA. It has grown into a web app that runs in any browser, with nothing to install.
+GradePoint started as a Python script I wrote in my first semester to work out my GPA and CGPA. It's now a web app my friends can sign in to, with everyone's grades saved to their own account.
 
-## Web app features
-- **Semester GPA and cumulative CGPA**, updated live as you type, using the credit-hour weighted average.
-- **Marks or grades:** enter marks out of 100, or pick a letter grade directly when you only know the grade.
-- **BSCS presets:** load any of semesters 1–8 with their courses and credit hours already filled in, or start a blank semester with your own courses.
-- **Earlier record:** enter your CGPA and credit hours so far instead of typing in every past semester.
-- **Target planner:** shows the GPA you need over your next credit hours to reach a target CGPA, and tells you when a target is out of reach.
-- **Editable grading scale** to match any university.
-- **Saved automatically** in your browser, with JSON backup export and import to move data between devices.
-- Works on phones and supports dark mode.
+## Features
+- **Accounts:** sign in with Google or with email and password (password reset by email included). Each person's grades are private to their account and sync across devices.
+- **Dashboard:** your CGPA, credit hours, latest and best semester GPA, and a progress chart of each semester's GPA and your CGPA after it.
+- **Semesters:** enter marks out of 100, or pick a grade directly. BSCS semester 1–8 presets come with courses and credit hours filled in, or start a blank semester for any course list. You can also start from an existing CGPA instead of entering old semesters.
+- **Planner:** the GPA you need over your next credit hours to reach a target CGPA, plus a table of common targets.
+- **Settings:** edit your name, choose a light, dark or system theme, edit the grading scale to match your university, download or restore a backup, and delete your account.
+- Saves automatically, keeps working offline (changes sync when you're back online), and works on phones. It can be added to a home screen like an app.
 
-## Files
-| File | What it is |
+## How it's built
+Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Pages. Firebase handles sign-in (Firebase Authentication) and storage (Cloud Firestore). Each user has one document, `users/{uid}`, and `firestore.rules` makes sure only that user can read or write it.
+
+| Path | What it is |
 | --- | --- |
-| `index.html`, `style.css`, `app.js` | The web app (plain HTML, CSS and JavaScript, no build step) |
+| `index.html`, `styles.css` | Page shell and styles |
+| `js/main.js` | Start-up, sign-in state, navigation |
+| `js/views/` | The sign-in screen and the Dashboard, Semesters, Planner and Settings pages |
+| `js/calc.js` | GPA and CGPA calculations |
+| `js/store.js` | Holds your data and autosaves it |
+| `js/firebase.js` | Everything that talks to Firebase |
+| `firebase-config.js` | Your Firebase project's web config |
+| `firestore.rules` | Database security rules |
 | `modified_CGPA.py` | The original command-line calculator |
 
-## Running it
-- **Web app:** open `index.html` in a browser, or visit the live link above.
-- **Python script:** `python3 modified_CGPA.py`
+## Setting up Firebase (one time, about 5 minutes)
+1. Go to https://console.firebase.google.com, click **Create a project**, and give it a name (for example `gradepoint`). You can turn off Google Analytics.
+2. **Sign-in methods:** open **Build → Authentication → Get started**. Under **Sign-in method**, enable **Google** (choose a support email) and **Email/Password**.
+3. **Allow the site:** in **Authentication → Settings → Authorized domains**, click **Add domain** and enter `maliq-pak.github.io`.
+4. **Database:** open **Build → Firestore Database → Create database**. Choose a location near you (for example `asia-south1`, Mumbai) and start in **production mode**. Then open the **Rules** tab, replace everything with the contents of `firestore.rules`, and click **Publish**.
+5. **Web config:** open **Project settings** (the gear icon) → **Your apps** → the **Web** icon (`</>`). Register an app (no hosting needed) and copy the `firebaseConfig` values into `firebase-config.js`.
+6. Commit and push to `main`. GitHub Pages updates the live site within a minute or two.
 
-## Publishing on GitHub Pages
-In the repository go to **Settings → Pages**, set **Source** to *Deploy from a branch*, choose `main` and `/ (root)`, then save. The site appears at the live link above within a minute or two, and every push to `main` updates it.
+The values in `firebase-config.js` are meant to be public. What protects the data is the rules file in step 4.
+
+## Running locally
+The app uses JavaScript modules, so it needs to be served over HTTP rather than opened as a file:
+
+```
+python3 -m http.server 8000
+```
+
+Then open http://localhost:8000. Signing in works on `localhost` by default. The Python script still runs with `python3 modified_CGPA.py`.
 
 ## Technologies Used
-HTML, CSS, JavaScript, Python
+HTML, CSS, JavaScript, Firebase (Authentication, Cloud Firestore), Python

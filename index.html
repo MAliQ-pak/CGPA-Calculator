@@ -2,111 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CGPA Calculator</title>
-  <meta name="description" content="Calculate your semester GPA and cumulative CGPA from marks or grades, plan the GPA you need to hit a target, and keep your record saved in your browser.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GradePoint · CGPA Calculator</title>
+  <meta name="description" content="Track your semester GPA and CGPA, see your progress and plan the grades you need. Free, with your data saved to your account.">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="wrap">
-      <h1>CGPA Calculator</h1>
-      <p class="tagline">Semester GPA, cumulative CGPA and target planning, all in one place. Your data stays in this browser.</p>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="summary" aria-live="polite">
-      <div class="stat stat-main">
-        <span class="stat-label">CGPA</span>
-        <span class="stat-value" id="cgpa">–</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Credit hours</span>
-        <span class="stat-value" id="total-credits">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Semesters</span>
-        <span class="stat-value" id="semester-count">0</span>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Semesters</h2>
-      <p class="hint">Enter marks out of 100, or leave marks empty and pick a grade directly. Courses without marks or a grade aren't counted yet.</p>
-      <div id="semesters"></div>
-      <div class="add-row">
-        <button type="button" class="btn btn-primary" id="add-blank">+ Blank semester</button>
-        <div class="preset">
-          <label for="preset-select">or load a BSCS semester:</label>
-          <select id="preset-select"></select>
-          <button type="button" class="btn" id="add-preset">Add</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Earlier record <span class="optional">optional</span></h2>
-      <p class="hint">Don't want to enter every past semester? Put in your CGPA and credit hours so far, and the semesters above are added on top.</p>
-      <div class="field-row">
-        <label>Previous CGPA
-          <input type="number" id="prior-cgpa" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 3.20">
-        </label>
-        <label>Credit hours completed
-          <input type="number" id="prior-credits" min="0" step="1" inputmode="numeric" placeholder="e.g. 36">
-        </label>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Target planner</h2>
-      <p class="hint">Find the GPA you need over your next credit hours to reach a target CGPA.</p>
-      <div class="field-row">
-        <label>Target CGPA
-          <input type="number" id="target-cgpa" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 3.50">
-        </label>
-        <label>Upcoming credit hours
-          <input type="number" id="target-credits" min="1" step="1" inputmode="numeric" placeholder="e.g. 17">
-        </label>
-      </div>
-      <p class="result" id="target-result"></p>
-    </section>
-
-    <section class="card">
-      <details>
-        <summary><h2>Grading scale</h2></summary>
-        <p class="hint">Marks at or above the minimum get that grade. Edit it to match your university.</p>
-        <table class="scale-table">
-          <thead>
-            <tr><th>Min marks</th><th>Grade</th><th>Grade points</th><th><span class="sr-only">Remove</span></th></tr>
-          </thead>
-          <tbody id="scale-body"></tbody>
-        </table>
-        <p class="error" id="scale-error"></p>
-        <div class="btn-row">
-          <button type="button" class="btn" id="add-grade">+ Grade</button>
-          <button type="button" class="btn" id="reset-scale">Reset to default</button>
-        </div>
-      </details>
-    </section>
-
-    <section class="card">
-      <h2>Your data</h2>
-      <p class="hint">Everything is saved automatically in this browser. Export a backup to move it to another device.</p>
-      <div class="btn-row">
-        <button type="button" class="btn" id="export">Export backup</button>
-        <label class="btn">Import backup<input type="file" id="import" accept="application/json,.json" hidden></label>
-        <button type="button" class="btn btn-danger" id="reset-all">Clear everything</button>
-      </div>
-      <p class="hint" id="data-status"></p>
-    </section>
-  </main>
-
-  <footer class="wrap site-footer">
-    <a href="https://github.com/MAliQ-pak/CGPA-Calculator">Source on GitHub</a>
-  </footer>
-
-  <script src="app.js"></script>
+  <div id="app">
+    <div class="loading-screen"><div class="spinner" aria-hidden="true"></div><p>Loading…</p></div>
+  </div>
+  <noscript><p class="noscript">GradePoint needs JavaScript turned on.</p></noscript>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
