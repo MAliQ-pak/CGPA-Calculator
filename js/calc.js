@@ -47,6 +47,7 @@ export function freshData() {
     semesters: [],
     prior: { cgpa: '', credits: '' },
     target: { cgpa: '', credits: '' },
+    retakePolicy: 'latest', // which attempt of a repeated course counts: 'latest' | 'best'
   };
 }
 
@@ -84,6 +85,7 @@ export function normalize(data) {
             credits: str(c.credits),
             marks: str(c.marks),
             grade: str(c.grade),
+            ...(c.retakeOf ? { retakeOf: str(c.retakeOf) } : {}),
             ...(Array.isArray(c.assessments) && c.assessments.length
               ? { assessments: c.assessments.map((a) => ({ id: str(a.id) || uid(), name: str(a.name), weight: str(a.weight), obtained: str(a.obtained), total: str(a.total) })) }
               : {}),
@@ -110,6 +112,7 @@ export function normalize(data) {
     };
   }
   if (data.prior) base.prior = { cgpa: str(data.prior.cgpa), credits: str(data.prior.credits) };
+  if (data.retakePolicy === 'best') base.retakePolicy = 'best';
   if (data.target) base.target = { cgpa: str(data.target.cgpa), credits: str(data.target.credits) };
   return base;
 }
@@ -299,28 +302,144 @@ export function priorTotals(data) {
   return { points: cgpa * credits, credits };
 }
 
-export function overallTotals(data) {
-  let { points, credits } = priorTotals(data);
-  for (const s of data.semesters) {
-    const t = semesterTotals(data, s);
-    points += t.points;
-    credits += t.credits;
+// ---------- repeated courses ----------
+
+// Where every course lives: id → { course, semIndex }.
+function courseLocations(data) {
+  const map = new Map();
+  data.semesters.forEach((sem, semIndex) => sem.courses.forEach((course) => map.set(course.id, { course, semIndex })));
+  return map;
+}
+
+// The earlier course this one retakes, if the link is valid (it must be in an earlier semester).
+export function retakeTarget(data, course, where = courseLocations(data)) {
+  if (!course.retakeOf) return null;
+  const self = where.get(course.id);
+  const target = where.get(course.retakeOf);
+  if (!self || !target || target.semIndex >= self.semIndex) return null;
+  return target;
+}
+
+// All attempts of one course share the id of the first attempt.
+function attemptGroup(data, course, where) {
+  let current = course;
+  for (let i = 0; i < 50; i++) {
+    const t = retakeTarget(data, current, where);
+    if (!t) return current.id;
+    current = t.course;
   }
+  return current.id;
+}
+
+// Walks the semesters in order, counting one attempt per repeated course (the latest, or the
+// best when retakePolicy is 'best'). Calls onSemester after each semester with running totals.
+function cgpaWalk(data, onSemester) {
+  let { points, credits } = priorTotals(data);
+  const where = courseLocations(data);
+  const kept = new Map(); // group → { gp, credits, id }
+  const counted = new Set();
+  const graded = new Set();
+  data.semesters.forEach((sem, semIndex) => {
+    for (const c of sem.courses) {
+      const r = evaluateCourse(data, c);
+      if (!r || r.gp === undefined) continue;
+      graded.add(c.id);
+      const group = attemptGroup(data, c, where);
+      const prev = kept.get(group);
+      if (prev) {
+        if (data.retakePolicy === 'best' && r.gp < prev.gp) continue;
+        points -= prev.gp * prev.credits;
+        credits -= prev.credits;
+        counted.delete(prev.id);
+      }
+      kept.set(group, { gp: r.gp, credits: r.credits, id: c.id });
+      points += r.gp * r.credits;
+      credits += r.credits;
+      counted.add(c.id);
+    }
+    if (onSemester) onSemester(sem, semIndex, points, credits);
+  });
+  return { points, credits, counted, graded, where };
+}
+
+export function overallTotals(data) {
+  const { points, credits } = cgpaWalk(data);
   return { points, credits, cgpa: credits ? points / credits : null };
 }
 
 // One entry per semester that has counted courses, with the CGPA after it.
 export function history(data) {
-  let { points, credits } = priorTotals(data);
   const rows = [];
-  for (const s of data.semesters) {
-    const t = semesterTotals(data, s);
-    if (!t.credits) continue;
-    points += t.points;
-    credits += t.credits;
-    rows.push({ id: s.id, name: s.name, gpa: t.gpa, credits: t.credits, cgpa: points / credits });
-  }
+  cgpaWalk(data, (sem, semIndex, points, credits) => {
+    const t = semesterTotals(data, sem);
+    if (!t.credits) return;
+    rows.push({ id: sem.id, name: sem.name, gpa: t.gpa, credits: t.credits, cgpa: points / credits });
+  });
   return rows;
+}
+
+// For the Semesters page: how each course in a retake chain is treated.
+// id → { retakeOf?: {course, semIndex}, notCounted?: true, replacedBy?: {course, semIndex} }
+export function retakeInfo(data) {
+  const { counted, graded, where } = cgpaWalk(data);
+  const info = new Map();
+  const groups = new Map();
+  for (const [id, loc] of where) {
+    const t = retakeTarget(data, loc.course, where);
+    if (t) info.set(id, { ...(info.get(id) || {}), retakeOf: t });
+    const g = attemptGroup(data, loc.course, where);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(id);
+  }
+  for (const ids of groups.values()) {
+    if (ids.length < 2) continue;
+    const winner = ids.find((id) => counted.has(id));
+    for (const id of ids) {
+      if (!graded.has(id) || counted.has(id)) continue;
+      info.set(id, { ...(info.get(id) || {}), notCounted: true, replacedBy: winner ? where.get(winner) : null });
+    }
+  }
+  return info;
+}
+
+// Earlier courses with the same name, to suggest marking a course as a retake.
+export function sameNameEarlier(data, course) {
+  const name = course.name.trim().toLowerCase();
+  if (!name) return null;
+  const where = courseLocations(data);
+  const self = where.get(course.id);
+  if (!self) return null;
+  for (let i = self.semIndex - 1; i >= 0; i--) {
+    const match = data.semesters[i].courses.find((c) => c.name.trim().toLowerCase() === name);
+    if (match) return { course: match, semIndex: i };
+  }
+  return null;
+}
+
+// ---------- what if ----------
+
+// Results if the courses in `overrides` (courseId → grade) got those grades. Nothing is changed.
+export function whatIf(data, semId, overrides) {
+  const copy = normalize(serialize(data));
+  const sem = copy.semesters.find((x) => x.id === semId);
+  if (sem) {
+    for (const c of sem.courses) {
+      const g = overrides[c.id];
+      if (!g) continue;
+      c.marks = '';
+      c.grade = g;
+      delete c.assessments;
+    }
+  }
+  return { semester: sem ? semesterTotals(copy, sem) : null, overall: overallTotals(copy) };
+}
+
+// The grade a breakdown is on pace for, or null when nothing is marked yet.
+export function paceGrade(data, c) {
+  if (!hasBreakdown(c)) return null;
+  const s = assessmentSummary(c);
+  if (s.problem || s.percentSoFar === null) return null;
+  return sortedScale(data).find((g) => s.percentSoFar >= g.min) || null;
 }
 
 // GPA needed over `next` credit hours to reach `target`.

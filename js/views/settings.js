@@ -12,6 +12,7 @@ export function renderSettings(root, { refreshUser, runSetup }) {
     programSection(runSetup),
     appearanceSection(),
     scaleSection(),
+    retakeSection(),
     dataSection(),
     accountSection(),
   );
@@ -93,6 +94,25 @@ function scaleSection() {
   return section('Grading scale', 'Marks at or above the minimum get that grade. Match it to your university.',
     scaleEditor(store.data, { onChange: changed }),
   );
+}
+
+function retakeSection() {
+  const group = el('div', { class: 'choice-list policy-options', role: 'radiogroup', 'aria-label': 'Which attempt counts' });
+  for (const [value, title, desc] of [
+    ['latest', 'Latest attempt counts', 'The newest grade replaces earlier ones, even if it’s lower. Most common.'],
+    ['best', 'Best attempt counts', 'Whichever attempt has the higher grade counts.'],
+  ]) {
+    const b = el('button', { type: 'button', role: 'radio', class: 'choice-card', 'aria-checked': String((store.data.retakePolicy || 'latest') === value) },
+      el('span', { class: 'radio-dot', 'aria-hidden': 'true' }),
+      el('span', { class: 'choice-text' }, el('strong', {}, title), el('span', { class: 'muted' }, desc)));
+    b.addEventListener('click', () => {
+      store.data.retakePolicy = value;
+      changed();
+      for (const x of group.children) x.setAttribute('aria-checked', String(x === b));
+    });
+    group.append(b);
+  }
+  return section('Repeated courses', 'When you retake a course, only one attempt counts toward your CGPA. Check your university’s rule.', group);
 }
 
 function dataSection() {

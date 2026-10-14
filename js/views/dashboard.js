@@ -3,6 +3,7 @@ import { overallTotals, history, maxGP, fmt, fmtCredits } from '../calc.js';
 import { el, icon } from '../ui.js';
 import { gpaChart } from '../chart.js';
 import { requestOpen } from './semesters.js';
+import { openShareDialog } from './share.js';
 
 export function renderDashboard(root, { navigate }) {
   const data = store.data;
@@ -60,6 +61,10 @@ export function renderDashboard(root, { navigate }) {
             icon(delta >= 0.005 ? 'up' : delta <= -0.005 ? 'down' : 'chevron', 16),
             Math.abs(delta) < 0.005 ? `No change after ${last.name}` : `${delta > 0 ? '+' : '−'}${Math.abs(delta).toFixed(2)} after ${last.name}`)
         : el('span', { class: 'hero-sub' }, `${fmtCredits(totals.credits)} credit hours counted`),
+      totals.cgpa === null ? null : el('div', { class: 'hero-actions' },
+        el('button', { type: 'button', class: 'btn btn-primary btn-small', onclick: openShareDialog }, icon('share', 16), 'Share my result'),
+        el('a', { href: '#/report', class: 'btn btn-ghost btn-small' }, icon('download', 16), 'PDF summary'),
+      ),
     ),
     ring,
   );
