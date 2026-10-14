@@ -9,7 +9,8 @@ export const DEFAULT_SCALE = [
   { min: 0, grade: 'F', gp: 0.0 },
 ];
 
-// BSCS curriculum from the original Python script: [course, credit hours].
+// Default program: the BSCS curriculum from the original Python script, [course, credit hours].
+export const DEFAULT_PROGRAM_NAME = 'BSCS';
 export const PRESETS = {
   1: [['ITC', 3], ['FOP', 4], ['English(1)', 3], ['Calculus', 3], ['Basic Electronics', 3], ['Islamic Studies', 2]],
   2: [['DLD', 4], ['OOP', 4], ['English(2)', 3], ['Probability & Statistics', 3], ['Urdu', 2], ['Pakistan Studies', 2]],
@@ -23,8 +24,25 @@ export const PRESETS = {
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
+// A program is the user's own list of courses per semester, used to fill new semesters.
+export function defaultProgram() {
+  return {
+    name: DEFAULT_PROGRAM_NAME,
+    semesters: Object.keys(PRESETS).map((n) => ({
+      id: uid(),
+      courses: PRESETS[n].map(([name, credits]) => ({ id: uid(), name, credits: String(credits) })),
+    })),
+  };
+}
+
+export function emptyProgram(name = '') {
+  return { name, semesters: [{ id: uid(), courses: [] }] };
+}
+
 export function freshData() {
   return {
+    profile: { setupDone: false, university: '', currentSemester: '1' },
+    program: defaultProgram(),
     scale: DEFAULT_SCALE.map((g) => ({ ...g })),
     semesters: [],
     prior: { cgpa: '', credits: '' },
@@ -36,8 +54,14 @@ export function blankCourse() {
   return { id: uid(), name: '', credits: '3', marks: '', grade: '' };
 }
 
-export function presetCourses(n) {
-  return PRESETS[n].map(([name, credits]) => ({ id: uid(), name, credits: String(credits), marks: '', grade: '' }));
+// Fresh, unmarked copies of the courses in semester `index` (0-based) of the user's program.
+export function programCourses(data, index) {
+  const sem = data.program.semesters[index];
+  return sem ? sem.courses.map((c) => ({ id: uid(), name: c.name, credits: c.credits, marks: '', grade: '' })) : [];
+}
+
+export function programCredits(sem) {
+  return sem.courses.reduce((sum, c) => sum + (parseNum(c.credits) || 0), 0);
 }
 
 // Accept anything shaped roughly right (old saves, imported files, the database) and fill gaps.
@@ -63,6 +87,22 @@ export function normalize(data) {
           }))
         : [],
     }));
+  }
+  if (data.profile) {
+    base.profile = {
+      setupDone: Boolean(data.profile.setupDone),
+      university: str(data.profile.university),
+      currentSemester: str(data.profile.currentSemester) || '1',
+    };
+  }
+  if (data.program && Array.isArray(data.program.semesters)) {
+    base.program = {
+      name: str(data.program.name),
+      semesters: data.program.semesters.map((s) => ({
+        id: str(s.id) || uid(),
+        courses: Array.isArray(s.courses) ? s.courses.map((c) => ({ id: str(c.id) || uid(), name: str(c.name), credits: str(c.credits) })) : [],
+      })),
+    };
   }
   if (data.prior) base.prior = { cgpa: str(data.prior.cgpa), credits: str(data.prior.credits) };
   if (data.target) base.target = { cgpa: str(data.target.cgpa), credits: str(data.target.credits) };

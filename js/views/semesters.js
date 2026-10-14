@@ -1,6 +1,6 @@
 import { store, changed } from '../store.js';
 import {
-  PRESETS, uid, blankCourse, presetCourses, evaluateCourse, semesterTotals, overallTotals,
+  uid, blankCourse, programCourses, programCredits, evaluateCourse, semesterTotals, overallTotals,
   sortedScale, parseNum, maxGP, fmt, fmtCredits,
 } from '../calc.js';
 import { el, icon, openDialog, confirmDialog, toast } from '../ui.js';
@@ -31,7 +31,7 @@ export function renderSemesters(root) {
     el('div', { class: 'page-intro row' },
       el('div', {},
         el('h2', {}, 'Your semesters'),
-        el('p', {}, 'Enter marks out of 100, or pick a grade if you only know that. Changes save automatically.'),
+        el('p', {}, 'Enter marks out of 100, or pick a grade if you only know that. Rename courses, change credit hours or add courses right in the list. Changes save automatically.'),
       ),
       addButton,
     ),
@@ -255,14 +255,21 @@ export function renderSemesters(root) {
             el('span', { class: 'option-icon' }, icon('plus', 22)),
             el('span', {}, el('strong', {}, 'Blank semester'), el('span', { class: 'muted' }, 'Type in your own courses and credit hours')),
           ),
-          el('h3', { class: 'dialog-section' }, 'BSCS presets'),
-          el('p', { class: 'muted small' }, 'Courses and credit hours already filled in. You can edit them after.'),
+          el('div', { class: 'dialog-section-row' },
+            el('h3', { class: 'dialog-section' }, `From your program${data.program.name ? ` (${data.program.name})` : ''}`),
+            el('a', { href: '#/program', class: 'link small', onclick: () => close() }, 'Edit courses'),
+          ),
+          el('p', { class: 'muted small' }, 'Courses and credit hours are filled in from your program. You can still edit them after.'),
           el('div', { class: 'preset-grid' },
-            Object.keys(PRESETS).map((n) => el('button', { type: 'button', class: `preset${used.has(`Semester ${n}`) ? ' used' : ''}`, onclick: () => pick(presetCourses(n), `Semester ${n}`) },
-              el('strong', {}, `Semester ${n}`),
-              el('span', { class: 'muted' }, `${PRESETS[n].length} courses · ${PRESETS[n].reduce((a, [, c]) => a + c, 0)} cr`),
-              used.has(`Semester ${n}`) ? el('span', { class: 'tag' }, 'Added') : null,
-            )),
+            data.program.semesters.map((ps, i) => {
+              const name = `Semester ${i + 1}`;
+              const empty = !ps.courses.length;
+              return el('button', { type: 'button', class: `preset${used.has(name) ? ' used' : ''}`, onclick: () => pick(empty ? [blankCourse()] : programCourses(data, i), name) },
+                el('strong', {}, name),
+                el('span', { class: 'muted' }, empty ? 'No courses yet' : `${ps.courses.length} courses · ${fmtCredits(programCredits(ps))} cr`),
+                used.has(name) ? el('span', { class: 'tag' }, 'Added') : null,
+              );
+            }),
           ),
         );
       },

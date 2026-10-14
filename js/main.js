@@ -6,6 +6,8 @@ import { renderDashboard } from './views/dashboard.js';
 import { renderSemesters } from './views/semesters.js';
 import { renderPlanner } from './views/planner.js';
 import { renderSettings } from './views/settings.js';
+import { renderProgram } from './views/program.js';
+import { renderSetup } from './views/setup.js';
 import { applyTheme } from './theme.js';
 
 const root = document.getElementById('app');
@@ -15,6 +17,8 @@ const ROUTES = {
   semesters: { title: 'Semesters', icon: 'semesters', render: renderSemesters },
   planner: { title: 'Planner', icon: 'planner', render: renderPlanner },
   settings: { title: 'Settings', icon: 'settings', render: renderSettings },
+  // Reached from Settings, so it isn't in the navigation and highlights Settings.
+  program: { title: 'Program & courses', icon: 'book', render: renderProgram, parent: 'settings' },
 };
 
 let shell = null;
@@ -39,14 +43,14 @@ function renderRoute() {
   if (cleanup) cleanup();
   cleanup = null;
   for (const a of shell.querySelectorAll('[data-route]')) {
-    if (a.dataset.route === name) a.setAttribute('aria-current', 'page');
+    if (a.dataset.route === (route.parent || name)) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
   shell.querySelector('#page-title').textContent = route.title;
   document.title = `${route.title} · GradePoint`;
   const content = shell.querySelector('#content');
   content.replaceChildren();
-  cleanup = route.render(content, { navigate, refreshUser }) || null;
+  cleanup = route.render(content, { navigate, refreshUser, runSetup: () => startSetup(true) }) || null;
   content.focus({ preventScroll: true });
   window.scrollTo(0, 0);
 }
@@ -73,7 +77,7 @@ function statusBadge() {
 
 function navLinks(cls) {
   return el('nav', { class: cls, 'aria-label': 'Main' },
-    Object.entries(ROUTES).map(([name, r]) =>
+    Object.entries(ROUTES).filter(([, r]) => !r.parent).map(([name, r]) =>
       el('a', { href: `#/${name}`, class: 'nav-link', dataset: { route: name } }, icon(r.icon), el('span', {}, r.title)),
     ),
   );
@@ -153,6 +157,22 @@ function renderShell() {
   renderRoute();
 }
 
+function startSetup(rerun) {
+  if (cleanup) cleanup();
+  cleanup = null;
+  shell = null;
+  document.title = 'Set up · GradePoint';
+  renderSetup(root, {
+    rerun,
+    onDone: ({ welcome, goTo } = {}) => {
+      if (goTo) history.replaceState(null, '', `#/${goTo}`);
+      renderShell();
+      if (welcome) toast('You’re all set! Change anything later in Settings.', 'success');
+      else toast('Setup saved', 'success');
+    },
+  });
+}
+
 function loadingScreen(text = 'Loading…') {
   root.replaceChildren(el('div', { class: 'loading-screen' }, logoMark(48), el('div', { class: 'spinner', 'aria-hidden': 'true' }), el('p', {}, text)));
 }
@@ -160,7 +180,7 @@ function loadingScreen(text = 'Loading…') {
 async function offerLegacyImport(isNew) {
   const legacy = legacyData();
   if (!legacy) return;
-  const sems = legacy.semesters.length;
+  const sems = (legacy.semesters || []).length;
   const ok = await confirmDialog({
     title: 'Bring over your saved grades?',
     message: `This browser has ${sems} semester${sems === 1 ? '' : 's'} saved from the earlier version of the app. ${isNew ? 'Add them to your account?' : 'Replace the data in your account with them?'}`,
@@ -194,8 +214,9 @@ async function start() {
       loadingScreen('Loading your grades…');
       try {
         const { isNew } = await loadFor(user);
-        renderShell();
         await offerLegacyImport(isNew);
+        if (store.data.profile.setupDone) renderShell();
+        else startSetup(false);
       } catch (e) {
         console.error(e);
         root.replaceChildren(el('div', { class: 'loading-screen' },

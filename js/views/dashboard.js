@@ -13,7 +13,10 @@ export function renderDashboard(root, { navigate }) {
 
   const greeting = el('div', { class: 'page-intro' },
     el('h2', {}, firstName ? `Hi, ${firstName}` : 'Welcome'),
-    el('p', {}, rows.length ? 'Here’s where your grades stand.' : 'Let’s add your first semester.'),
+    el('p', {}, [
+      [data.program.name, data.profile.university].filter(Boolean).join(' · '),
+      rows.length ? 'Here’s where your grades stand.' : data.semesters.length ? 'Enter your marks to see your CGPA.' : 'Let’s add your first semester.',
+    ].filter(Boolean).join(' — ')),
   );
 
   if (!data.semesters.length && totals.cgpa === null) {
