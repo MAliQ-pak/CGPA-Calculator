@@ -1,6 +1,7 @@
 // Sign-in / create-account screen.
 import { el, icon, GOOGLE_LOGO } from '../ui.js';
 import * as backend from '../firebase.js';
+import { pendingJoin } from '../sharing.js';
 
 export function renderAuth(root) {
   let mode = 'signin'; // 'signin' | 'signup' | 'reset'
@@ -117,6 +118,9 @@ export function renderAuth(root) {
       }
     });
 
+    if (pendingJoin()) {
+      card.append(el('div', { class: 'notice' }, icon('share', 18), el('span', {}, `A friend shared their courses with you (code ${pendingJoin()}). Sign in or create an account to copy them.`)));
+    }
     card.append(
       el('h2', {}, signup ? 'Create your account' : 'Welcome back'),
       el('p', { class: 'auth-sub' }, signup ? 'Free, and takes less than a minute.' : 'Sign in to see your grades.'),

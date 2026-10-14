@@ -183,3 +183,38 @@ test('breakdown survives normalize; courses without one stay unchanged', () => {
   assert.deepEqual(n.semesters[0].courses[0].assessments.map((a) => [a.name, a.weight, a.obtained, a.total]), [['Final', '50', '40', '50']]);
   assert.equal('assessments' in n.semesters[0].courses[1], false);
 });
+
+// ---------- sharing ----------
+import { newShareCode, cleanShareCode, sharedProgramPayload, programFromShared } from '../../js/calc.js';
+
+test('share codes are 6 easy-to-read characters', () => {
+  for (let i = 0; i < 200; i++) assert.match(newShareCode(), /^[A-HJ-NP-Z2-9]{6}$/);
+  assert.equal(newShareCode(() => 0), 'AAAAAA');
+});
+
+test('codes are cleaned up from what people type or paste', () => {
+  assert.equal(cleanShareCode(' k7p2qx '), 'K7P2QX');
+  assert.equal(cleanShareCode('K7P-2QX'), 'K7P2QX');
+  assert.equal(cleanShareCode('https://maliq-pak.github.io/CGPA-Calculator/#/join/k7p2qx'), 'K7P2QX');
+  assert.equal(cleanShareCode('K7P2Q'), '', 'too short');
+  assert.equal(cleanShareCode('K7P2QO'), '', 'O is never used in codes');
+  assert.equal(cleanShareCode(''), '');
+});
+
+test('shared programs carry course names and credits only', () => {
+  const d = freshData();
+  d.profile.university = 'FAST';
+  d.program.semesters[0].courses[0].marks = '99'; // never part of a program, but make sure nothing leaks
+  const p = sharedProgramPayload(d, 'Ali Raza Khan');
+  assert.equal(p.name, 'BSCS');
+  assert.equal(p.university, 'FAST');
+  assert.equal(p.ownerName, 'Ali', 'first name only');
+  assert.deepEqual(Object.keys(p.semesters[0].courses[0]).sort(), ['credits', 'name']);
+  assert.equal(p.semesters.length, 8);
+
+  const copy = programFromShared(p, 'K7P2QX');
+  assert.equal(copy.copiedFrom, 'K7P2QX');
+  assert.equal(copy.semesters[6].courses[2].name, 'FYP 1');
+  assert.ok(copy.semesters[0].id && copy.semesters[0].courses[0].id);
+  assert.deepEqual(programFromShared({}, 'X').semesters, []);
+});

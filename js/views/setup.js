@@ -8,6 +8,8 @@ import { el, icon } from '../ui.js';
 import { logoMark } from './auth.js';
 import { programEditor } from './program-editor.js';
 import { scaleEditor } from './scale-editor.js';
+import { codeLookup, pendingJoin, clearPendingJoin, programChanged } from '../sharing.js';
+import { programFromShared } from '../calc.js';
 
 const STEPS = ['About you', 'Courses', 'Grading', 'Starting point'];
 const clone = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !Number.isFinite(x) ? null : x)));
@@ -19,13 +21,15 @@ export function renderSetup(root, { onDone, rerun = false }) {
     university: live.profile.university,
     currentSemester: live.profile.currentSemester || '1',
     programKind: live.program.name === DEFAULT_PROGRAM_NAME || !live.program.name ? 'default' : 'custom',
+    shared: null, // { code, data } once a friend's code is used
     program: clone(live.program),
     scale: clone(live.scale).map((g) => ({ min: g.min ?? NaN, grade: g.grade, gp: g.gp ?? NaN })),
     start: 'fresh', // 'fresh' | 'prior' | 'past'
     prior: { ...live.prior },
     addCurrent: true,
   };
-  let step = rerun ? 1 : 0;
+  const joinCode = rerun ? '' : pendingJoin();
+  let step = rerun ? 1 : joinCode ? 'join' : 0;
 
   const firstName = (store.user.name || '').split(' ')[0];
   const main = el('main', { class: 'setup-main' });
@@ -37,14 +41,14 @@ export function renderSetup(root, { onDone, rerun = false }) {
 
   function render() {
     progress.replaceChildren();
-    if (step > 0) {
+    if (typeof step === 'number' && step > 0) {
       progress.append(
         el('span', { class: 'muted small' }, `Step ${step} of ${STEPS.length} · ${STEPS[step - 1]}`),
         el('div', { class: 'setup-bar', role: 'progressbar', 'aria-valuemin': '1', 'aria-valuemax': String(STEPS.length), 'aria-valuenow': String(step) },
           el('span', { style: `width:${(step / STEPS.length) * 100}%` })),
       );
     }
-    main.replaceChildren([welcome, about, courses, grading, starting][step]());
+    main.replaceChildren(step === 'join' ? join() : [welcome, about, courses, grading, starting][step]());
     const focusable = main.querySelector('h1');
     if (focusable) focusable.focus({ preventScroll: true });
     window.scrollTo(0, 0);
@@ -96,8 +100,41 @@ export function renderSetup(root, { onDone, rerun = false }) {
             el('span', { class: 'muted' }, 'Choose your program, edit its courses, adjust the grading scale and enter where you’re starting from. About a minute.'),
           ),
         ),
+        el('button', { type: 'button', class: 'choice-card big', onclick: () => go('join') },
+          el('span', { class: 'option-icon' }, icon('share', 22)),
+          el('span', { class: 'choice-text' },
+            el('strong', {}, 'I have a code from a friend'),
+            el('span', { class: 'muted' }, 'Copy a friend’s course list for your university, then finish setting up.'),
+          ),
+        ),
       ),
     );
+  }
+
+  function join() {
+    const lookup = codeLookup({
+      initial: joinCode,
+      useLabel: 'Use these courses',
+      onUse: (code, data) => {
+        draft.shared = { code, data };
+        draft.programKind = 'shared';
+        draft.program = programFromShared(data, code);
+        if (!draft.university && data.university) draft.university = data.university;
+        clearPendingJoin();
+        go(1);
+      },
+    });
+    const node = el('div', { class: 'setup-card' },
+      el('h1', { tabindex: '-1' }, 'Copy a friend’s program'),
+      el('p', { class: 'setup-sub' }, 'Enter the 6-character code your friend shared. You’ll see their program before using it, and you can still edit the courses afterwards.'),
+      lookup,
+      el('div', { class: 'setup-actions' },
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { clearPendingJoin(); go(0); } }, 'Back'),
+        el('span'),
+      ),
+    );
+    if (joinCode) setTimeout(() => lookup.search());
+    return node;
   }
 
   function about() {
@@ -122,7 +159,9 @@ export function renderSetup(root, { onDone, rerun = false }) {
         if (draft.programKind !== kind) {
           draft.programKind = kind;
           // Switching program starts its course list fresh; the old one isn't saved until Finish.
-          draft.program = kind === 'default' ? defaultProgram() : emptyProgram(customName.value);
+          draft.program = kind === 'default' ? defaultProgram()
+            : kind === 'shared' ? programFromShared(draft.shared.data, draft.shared.code)
+            : emptyProgram(customName.value);
         }
         for (const x of kinds.children) x.setAttribute('aria-checked', String(x === b));
         nameField.hidden = kind !== 'custom';
@@ -130,6 +169,11 @@ export function renderSetup(root, { onDone, rerun = false }) {
       });
       return b;
     };
+    if (draft.shared) {
+      const d = draft.shared.data;
+      kinds.append(option('shared', `${d.name}${d.university ? ` · ${d.university}` : ''}`,
+        `${d.ownerName ? `${d.ownerName}’s` : 'Your friend’s'} course list (code ${draft.shared.code}). Check it on the next step.`));
+    }
     kinds.append(
       option('default', 'BSCS', 'Courses for all 8 semesters are filled in. Edit them on the next step if yours differ.'),
       option('custom', 'Another program', 'Start with an empty course list and add your own courses.'),
@@ -244,9 +288,11 @@ export function renderSetup(root, { onDone, rerun = false }) {
 
   function finish() {
     const data = store.data;
+    const shareCode = data.program.shareCode;
     data.profile = { setupDone: true, university: draft.university.trim(), currentSemester: draft.currentSemester };
     data.program = draft.program;
     data.program.name = data.program.name.trim() || DEFAULT_PROGRAM_NAME;
+    if (shareCode) data.program.shareCode = shareCode;
     data.scale = draft.scale;
     if (!hasSemesters) {
       const cur = Number(draft.currentSemester);
@@ -256,6 +302,7 @@ export function renderSetup(root, { onDone, rerun = false }) {
       if (draft.addCurrent) add(cur);
     }
     changed();
+    programChanged();
     onDone({ welcome: !rerun, goTo: !hasSemesters && data.semesters.length ? 'semesters' : 'dashboard' });
   }
 

@@ -101,6 +101,8 @@ export function normalize(data) {
   if (data.program && Array.isArray(data.program.semesters)) {
     base.program = {
       name: str(data.program.name),
+      ...(data.program.shareCode ? { shareCode: str(data.program.shareCode) } : {}),
+      ...(data.program.copiedFrom ? { copiedFrom: str(data.program.copiedFrom) } : {}),
       semesters: data.program.semesters.map((s) => ({
         id: str(s.id) || uid(),
         courses: Array.isArray(s.courses) ? s.courses.map((c) => ({ id: str(c.id) || uid(), name: str(c.name), credits: str(c.credits) })) : [],
@@ -166,6 +168,49 @@ export function evaluateCourse(data, c) {
   }
   if (credits === null || credits <= 0) return { grade: g.grade, error: 'Add credit hours' };
   return { gp: g.gp, grade: g.grade, credits };
+}
+
+// ---------- sharing a program with a code ----------
+
+// No 0/O or 1/I, so codes are easy to read out and type.
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const SHARE_CODE_LENGTH = 6;
+
+export function newShareCode(random = Math.random) {
+  let code = '';
+  for (let i = 0; i < SHARE_CODE_LENGTH; i++) code += CODE_CHARS[Math.floor(random() * CODE_CHARS.length)];
+  return code;
+}
+
+// Accepts what people actually type or paste: lowercase, spaces, dashes, or a whole join link.
+export function cleanShareCode(input) {
+  const text = String(input || '').trim();
+  const fromLink = /#\/join\/([^/?#]+)/i.exec(text);
+  const code = (fromLink ? fromLink[1] : text).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return code.length === SHARE_CODE_LENGTH && [...code].every((ch) => CODE_CHARS.includes(ch)) ? code : '';
+}
+
+// What gets stored for friends: names and credit hours only, never marks.
+export function sharedProgramPayload(data, ownerName) {
+  return {
+    name: data.program.name.trim().slice(0, 80) || DEFAULT_PROGRAM_NAME,
+    university: (data.profile.university || '').trim().slice(0, 120),
+    ownerName: (ownerName || '').trim().split(/\s+/)[0].slice(0, 60),
+    semesters: data.program.semesters.slice(0, 16).map((s) => ({
+      courses: s.courses.slice(0, 30).map((c) => ({ name: c.name.slice(0, 120), credits: c.credits.slice(0, 6) })),
+    })),
+  };
+}
+
+export function programFromShared(shared, code) {
+  return {
+    name: String(shared.name || DEFAULT_PROGRAM_NAME),
+    copiedFrom: code,
+    semesters: (Array.isArray(shared.semesters) ? shared.semesters : []).map((s) => ({
+      id: uid(),
+      courses: (Array.isArray(s.courses) ? s.courses : []).map((c) => ({ id: uid(), name: String(c.name || ''), credits: String(c.credits ?? '') })),
+    })),
+  };
 }
 
 // ---------- marks breakdown (quizzes, mids, final…) ----------

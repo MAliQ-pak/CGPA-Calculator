@@ -743,3 +743,14 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
   .bd-name .cell-label { display: none; }
   .bd-row .icon-btn { align-self: end; }
 }
+
+/* ---------- sharing ---------- */
+.share-code { font-size: 2.1rem; font-weight: 800; letter-spacing: 0.22em; padding: 12px 18px; margin-bottom: 14px; width: fit-content; border-radius: 14px; background: var(--honey-soft); color: var(--text); font-variant-numeric: tabular-nums; border: 1px dashed var(--honey); }
+.code-lookup { display: flex; flex-direction: column; gap: 10px; }
+.code-form { display: flex; gap: 8px; max-width: 420px; }
+.code-form input { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; }
+.code-form input::placeholder { letter-spacing: 0.04em; font-weight: 400; text-transform: none; }
+.code-preview:empty { display: none; }
+.program-summary.found { margin: 0; padding: 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+.program-summary.found > div { flex: 1; min-width: 180px; }
+.auth-card .notice { margin-bottom: 0; }

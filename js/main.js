@@ -9,6 +9,8 @@ import { renderSettings } from './views/settings.js';
 import { renderProgram } from './views/program.js';
 import { renderSetup } from './views/setup.js';
 import { applyTheme } from './theme.js';
+import { rememberPendingJoin, pendingJoin } from './sharing.js';
+import { cleanShareCode } from './calc.js';
 
 const root = document.getElementById('app');
 
@@ -55,7 +57,20 @@ function renderRoute() {
   window.scrollTo(0, 0);
 }
 
-window.addEventListener('hashchange', renderRoute);
+// A friend's join link (#/join/CODE) is remembered, then handled once the user is signed in.
+function takeJoinLink() {
+  const m = /^#\/join\/([^/?#]+)/i.exec(location.hash);
+  if (!m) return false;
+  const code = cleanShareCode(m[1]);
+  if (code) rememberPendingJoin(code);
+  history.replaceState(null, '', shell ? '#/program' : '#/dashboard');
+  return true;
+}
+
+window.addEventListener('hashchange', () => {
+  if (takeJoinLink() && !shell) return;
+  renderRoute();
+});
 
 function statusBadge() {
   const node = el('button', { type: 'button', class: 'save-status', 'aria-live': 'polite' });
@@ -204,6 +219,7 @@ async function start() {
     setupNotice(root);
     return;
   }
+  takeJoinLink();
   loadingScreen();
   try {
     await backend.onUserChanged(async (user) => {
@@ -219,8 +235,12 @@ async function start() {
       try {
         const { isNew } = await loadFor(user);
         await offerLegacyImport(isNew);
-        if (store.data.profile.setupDone) renderShell();
-        else startSetup(false);
+        if (store.data.profile.setupDone) {
+          if (pendingJoin()) history.replaceState(null, '', '#/program');
+          renderShell();
+        } else {
+          startSetup(false);
+        }
       } catch (e) {
         console.error(e);
         root.replaceChildren(el('div', { class: 'loading-screen' },
