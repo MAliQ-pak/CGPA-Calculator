@@ -16,6 +16,7 @@ GradePoint started as a Python script I wrote in my first semester to work out m
 - **Marks breakdown:** track quizzes, assignments, mid-terms and the final for any course as you get them back. See your running total and pace, and the percentage you need on the remaining work for each grade. Once everything is in, the total becomes the course's marks.
 - **Planner:** the GPA you need over your next credit hours to reach a target CGPA, plus a table of common targets.
 - **What if:** try grades for a semester's courses, including ones still in progress (with "on pace" grades from the marks breakdown), and see the resulting semester GPA and CGPA. Nothing is saved.
+- **Share your result:** a branded image of your CGPA (optionally without your name or semester chart) to download or share, and a printable PDF summary of every semester, grade and GPA.
 - **Settings:** edit your name, choose a light, dark or system theme, edit the grading scale to match your university, download or restore a backup, and delete your account.
 - Saves automatically, keeps working offline (changes sync when you're back online), and works on phones. It can be added to a home screen like an app.
 
@@ -31,6 +32,7 @@ Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Page
 | `js/store.js` | Holds your data and autosaves it |
 | `js/firebase.js` | Everything that talks to Firebase |
 | `js/sharing.js` | Share codes and copying a friend's program |
+| `js/card.js` | Draws the shareable result card |
 | `firebase-config.js` | Your Firebase project's web config |
 | `firestore.rules` | Database security rules |
 | `tests/` | Unit and browser tests, and the local dev server |

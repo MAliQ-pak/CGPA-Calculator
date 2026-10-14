@@ -8,6 +8,7 @@ import { renderPlanner } from './views/planner.js';
 import { renderSettings } from './views/settings.js';
 import { renderProgram } from './views/program.js';
 import { renderSetup } from './views/setup.js';
+import { renderReport } from './views/report.js';
 import { applyTheme } from './theme.js';
 import { rememberPendingJoin, pendingJoin } from './sharing.js';
 import { cleanShareCode } from './calc.js';
@@ -21,6 +22,7 @@ const ROUTES = {
   settings: { title: 'Settings', icon: 'settings', render: renderSettings },
   // Reached from Settings, so it isn't in the navigation and highlights Settings.
   program: { title: 'Program & courses', icon: 'book', render: renderProgram, parent: 'settings' },
+  report: { title: 'PDF summary', icon: 'download', render: renderReport, parent: 'dashboard' },
 };
 
 let shell = null;
