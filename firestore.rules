@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// Each user has one document, users/{uid}, that only they can read or write.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['version', 'data', 'updatedAt'])
+        && request.resource.data.data is map;
+    }
+  }
+}

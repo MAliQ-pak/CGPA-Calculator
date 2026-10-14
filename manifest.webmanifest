@@ -1,0 +1,13 @@
+{
+  "name": "GradePoint · CGPA Calculator",
+  "short_name": "GradePoint",
+  "description": "Track your semester GPA and CGPA and plan the grades you need.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
