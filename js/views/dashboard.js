@@ -12,7 +12,7 @@ export function renderDashboard(root, { navigate }) {
   const firstName = (store.user.name || '').split(' ')[0];
 
   const greeting = el('div', { class: 'page-intro' },
-    el('h2', {}, firstName ? `Hi, ${firstName}` : 'Welcome'),
+    el('h2', {}, firstName ? `${timeGreeting()}, ${firstName}` : timeGreeting()),
     el('p', {}, [
       [data.program.name, data.profile.university].filter(Boolean).join(' · '),
       rows.length ? 'Here’s where your grades stand.' : data.semesters.length ? 'Enter your marks to see your CGPA.' : 'Let’s add your first semester.',
@@ -56,9 +56,9 @@ export function renderDashboard(root, { navigate }) {
       el('span', { class: 'eyebrow' }, 'Cumulative GPA'),
       el('div', { class: 'hero-value' }, fmt(totals.cgpa), el('span', { class: 'hero-max' }, ` / ${fmt(max)}`)),
       delta !== null
-        ? el('span', { class: `delta ${delta > 0.004 ? 'up' : delta < -0.004 ? 'down' : 'flat'}` },
-            icon(delta > 0.004 ? 'up' : delta < -0.004 ? 'down' : 'chevron', 16),
-            `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2)} after ${last.name}`)
+        ? el('span', { class: `delta ${delta >= 0.005 ? 'up' : delta <= -0.005 ? 'down' : 'flat'}` },
+            icon(delta >= 0.005 ? 'up' : delta <= -0.005 ? 'down' : 'chevron', 16),
+            Math.abs(delta) < 0.005 ? `No change after ${last.name}` : `${delta > 0 ? '+' : '−'}${Math.abs(delta).toFixed(2)} after ${last.name}`)
         : el('span', { class: 'hero-sub' }, `${fmtCredits(totals.credits)} credit hours counted`),
     ),
     ring,
@@ -120,4 +120,9 @@ function stat(label, value, sub) {
     el('span', { class: 'stat-value' }, value),
     sub ? el('span', { class: 'stat-sub' }, sub) : null,
   );
+}
+
+function timeGreeting() {
+  const h = new Date().getHours();
+  return h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }

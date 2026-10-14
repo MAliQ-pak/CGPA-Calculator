@@ -8,8 +8,9 @@ export function renderAuth(root) {
 
   const brand = el('aside', { class: 'auth-brand' },
     el('div', { class: 'brand-mark' }, logoMark(40), el('span', {}, 'GradePoint')),
-    el('h1', {}, 'Your CGPA, always up to date.'),
-    el('p', { class: 'auth-lead' }, 'Track every semester, see your progress at a glance and plan the grades you need next.'),
+    el('span', { class: 'student-badge' }, icon('book', 16), 'Made for students'),
+    el('h1', {}, 'Know your CGPA. Plan your next A.'),
+    el('p', { class: 'auth-lead' }, 'Add your marks after each semester and GradePoint works out your GPA, your CGPA and what you need next. Free for every student.'),
     el('ul', { class: 'auth-points' },
       point('trend', 'Semester GPA and CGPA, calculated as you type'),
       point('planner', 'Find the GPA you need to hit your target'),
@@ -148,11 +149,14 @@ function field(label, control, extra) {
   );
 }
 
+// GradePoint mark: a progress-ring "G" with a honey dot, the "point".
+let logoCount = 0;
 export function logoMark(size = 32) {
+  const id = `gp-logo-${(logoCount += 1)}`;
   return el('span', {
     class: 'logo-mark',
     'aria-hidden': 'true',
-    html: `<svg width="${size}" height="${size}" viewBox="0 0 40 40"><rect width="40" height="40" rx="11" fill="var(--accent)"/><path d="M20 10 7 16.5 20 23l13-6.5L20 10Z" fill="#fff"/><path d="M12 20v6c0 2 3.6 4 8 4s8-2 8-4v-6l-8 4-8-4Z" fill="#fff" opacity=".75"/><path d="M33 16.5V25" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`,
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 40 40"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DE6A32"/><stop offset="1" stop-color="#B9481B"/></linearGradient></defs><rect class="logo-bg" width="40" height="40" rx="12" fill="url(#${id})"/><path d="M26.4 12.3A10 10 0 1 0 30 20h-8.5" fill="none" stroke="#FFF6EC" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30.2" cy="10.6" r="2.7" fill="#F6B94D"/></svg>`,
   });
 }
 

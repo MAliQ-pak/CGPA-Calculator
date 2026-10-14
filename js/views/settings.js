@@ -77,7 +77,7 @@ function programSection(runSetup) {
 function appearanceSection() {
   const current = getTheme();
   const group = el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Theme' });
-  for (const [value, label, ic] of [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']]) {
+  for (const [value, label, ic] of [['light', 'Light', 'sun'], ['dark', 'Dark', 'moon'], ['system', 'Match device', 'monitor']]) {
     const b = el('button', { type: 'button', role: 'radio', 'aria-checked': String(value === current) }, icon(ic, 16), label);
     b.addEventListener('click', () => {
       setTheme(value);
