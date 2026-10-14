@@ -2,7 +2,8 @@
 // achievements back on later doesn't flood the screen); celebrations only show when enabled.
 import { store, changed, onChange } from './store.js';
 import { newBadges, recordVisit, BADGES } from './gamify.js';
-import { toast } from './ui.js';
+import { toast, el } from './ui.js';
+import { badgeArt } from './badge-art.js';
 import { confetti } from './confetti.js';
 
 const CHECK_DELAY = 600;
@@ -18,7 +19,7 @@ function record(ids) {
 export function celebrate(ids) {
   if (!ids.length || !store.data.gamify.enabled) return;
   const shown = ids.slice(0, 2).map((id) => BADGES.find((b) => b.id === id));
-  for (const b of shown) toast(`${b.emoji} Badge unlocked: ${b.title}`, 'success');
+  for (const b of shown) toast(el('span', { class: 'toast-badge' }, badgeArt(b, 26), `Badge unlocked: ${b.title}`), 'success');
   if (ids.length > shown.length) toast(`+${ids.length - shown.length} more badges. See them in Achievements.`, 'success');
   confetti();
 }

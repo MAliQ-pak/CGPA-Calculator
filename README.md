@@ -35,6 +35,7 @@ Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Page
 | `js/sharing.js` | Share codes and copying a friend's program |
 | `js/card.js` | Draws the shareable result card |
 | `js/gamify.js`, `js/achievements.js` | Levels, badges and streak; recording and celebrating new badges |
+| `js/badge-art.js` | Draws the badge medals (SVG) |
 | `firebase-config.js` | Your Firebase project's web config |
 | `firestore.rules` | Database security rules |
 | `tests/` | Unit and browser tests, and the local dev server |
