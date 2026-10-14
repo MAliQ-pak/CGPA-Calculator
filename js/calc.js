@@ -84,6 +84,9 @@ export function normalize(data) {
             credits: str(c.credits),
             marks: str(c.marks),
             grade: str(c.grade),
+            ...(Array.isArray(c.assessments) && c.assessments.length
+              ? { assessments: c.assessments.map((a) => ({ id: str(a.id) || uid(), name: str(a.name), weight: str(a.weight), obtained: str(a.obtained), total: str(a.total) })) }
+              : {}),
           }))
         : [],
     }));
@@ -98,6 +101,8 @@ export function normalize(data) {
   if (data.program && Array.isArray(data.program.semesters)) {
     base.program = {
       name: str(data.program.name),
+      ...(data.program.shareCode ? { shareCode: str(data.program.shareCode) } : {}),
+      ...(data.program.copiedFrom ? { copiedFrom: str(data.program.copiedFrom) } : {}),
       semesters: data.program.semesters.map((s) => ({
         id: str(s.id) || uid(),
         courses: Array.isArray(s.courses) ? s.courses.map((c) => ({ id: str(c.id) || uid(), name: str(c.name), credits: str(c.credits) })) : [],
@@ -145,7 +150,11 @@ export function scaleProblem(data) {
 // filled in wrongly, or null when it's still empty.
 export function evaluateCourse(data, c) {
   const credits = parseNum(c.credits);
-  const marks = parseNum(c.marks);
+  const marks = courseMarks(c);
+  if (hasBreakdown(c)) {
+    const problem = assessmentSummary(c).problem;
+    if (problem) return { error: problem };
+  }
   let g;
   if (marks !== null) {
     if (marks < 0 || marks > 100) return { error: 'Marks must be 0–100' };
@@ -160,6 +169,110 @@ export function evaluateCourse(data, c) {
   if (credits === null || credits <= 0) return { grade: g.grade, error: 'Add credit hours' };
   return { gp: g.gp, grade: g.grade, credits };
 }
+
+// ---------- sharing a program with a code ----------
+
+// No 0/O or 1/I, so codes are easy to read out and type.
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const SHARE_CODE_LENGTH = 6;
+
+export function newShareCode(random = Math.random) {
+  let code = '';
+  for (let i = 0; i < SHARE_CODE_LENGTH; i++) code += CODE_CHARS[Math.floor(random() * CODE_CHARS.length)];
+  return code;
+}
+
+// Accepts what people actually type or paste: lowercase, spaces, dashes, or a whole join link.
+export function cleanShareCode(input) {
+  const text = String(input || '').trim();
+  const fromLink = /#\/join\/([^/?#]+)/i.exec(text);
+  const code = (fromLink ? fromLink[1] : text).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return code.length === SHARE_CODE_LENGTH && [...code].every((ch) => CODE_CHARS.includes(ch)) ? code : '';
+}
+
+// What gets stored for friends: names and credit hours only, never marks.
+export function sharedProgramPayload(data, ownerName) {
+  return {
+    name: data.program.name.trim().slice(0, 80) || DEFAULT_PROGRAM_NAME,
+    university: (data.profile.university || '').trim().slice(0, 120),
+    ownerName: (ownerName || '').trim().split(/\s+/)[0].slice(0, 60),
+    semesters: data.program.semesters.slice(0, 16).map((s) => ({
+      courses: s.courses.slice(0, 30).map((c) => ({ name: c.name.slice(0, 120), credits: c.credits.slice(0, 6) })),
+    })),
+  };
+}
+
+export function programFromShared(shared, code) {
+  return {
+    name: String(shared.name || DEFAULT_PROGRAM_NAME),
+    copiedFrom: code,
+    semesters: (Array.isArray(shared.semesters) ? shared.semesters : []).map((s) => ({
+      id: uid(),
+      courses: (Array.isArray(s.courses) ? s.courses : []).map((c) => ({ id: uid(), name: String(c.name || ''), credits: String(c.credits ?? '') })),
+    })),
+  };
+}
+
+// ---------- marks breakdown (quizzes, mids, final…) ----------
+
+// A typical split to start from; every university differs, so it's fully editable.
+export const COMMON_SPLIT = [['Assignments', 10], ['Quizzes', 10], ['Mid-term 1', 15], ['Mid-term 2', 15], ['Final exam', 50]];
+
+export function hasBreakdown(c) {
+  return Array.isArray(c.assessments) && c.assessments.length > 0;
+}
+
+// Weights are percentages of the course; each item's obtained/total is scaled to its weight.
+export function assessmentSummary(c) {
+  const items = c.assessments || [];
+  let weightTotal = 0;
+  let gradedWeight = 0;
+  let earned = 0;
+  let graded = 0;
+  let problem = '';
+  for (const a of items) {
+    const w = parseNum(a.weight);
+    const got = parseNum(a.obtained);
+    const out = parseNum(a.total);
+    if (w !== null && w > 0) weightTotal += w;
+    if (w === null || w <= 0 || got === null || out === null || out <= 0) continue;
+    if (got < 0 || got > out) {
+      problem = `${a.name || 'An item'}: marks must be between 0 and ${out}`;
+      continue;
+    }
+    graded += 1;
+    gradedWeight += w;
+    earned += (w * got) / out;
+  }
+  if (!problem && weightTotal > 100.001) problem = `Weights add up to ${round2(weightTotal)}%, more than 100%`;
+  const complete = !problem && items.length > 0 && graded === items.length && Math.abs(weightTotal - 100) < 0.001;
+  return {
+    weightTotal: round2(weightTotal),
+    gradedWeight: round2(gradedWeight),
+    earned: round2(earned),
+    remaining: round2(Math.max(0, 100 - gradedWeight)),
+    percentSoFar: gradedWeight > 0 ? (earned / gradedWeight) * 100 : null,
+    complete,
+    problem,
+  };
+}
+
+// The marks a course counts with: its breakdown total once complete, otherwise what was typed.
+export function courseMarks(c) {
+  if (!hasBreakdown(c)) return parseNum(c.marks);
+  const s = assessmentSummary(c);
+  return s.complete ? s.earned : null;
+}
+
+// Percentage needed on the remaining work to finish with at least `min` marks.
+export function neededPercent(summary, min) {
+  if (summary.earned >= min - 1e-9) return { status: 'secured' };
+  if (summary.remaining <= 0) return { status: 'impossible' };
+  const pct = ((min - summary.earned) / summary.remaining) * 100;
+  return pct > 100 + 1e-9 ? { status: 'impossible' } : { status: 'needed', pct };
+}
+
+const round2 = (n) => Math.round(n * 100) / 100;
 
 export function semesterTotals(data, sem) {
   let points = 0;

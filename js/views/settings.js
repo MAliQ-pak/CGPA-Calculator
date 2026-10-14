@@ -69,6 +69,7 @@ function programSection(runSetup) {
     ),
     el('div', { class: 'btn-row' },
       el('a', { href: '#/program', class: 'btn btn-primary btn-small' }, 'Edit courses'),
+      el('a', { href: '#/program/share', class: 'btn btn-ghost btn-small' }, icon('share', 16), program.shareCode ? `Shared · ${program.shareCode}` : 'Share with friends'),
       el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: runSetup }, 'Run setup again'),
     ),
   );
@@ -176,7 +177,7 @@ function deleteFlow() {
         error.textContent = '';
         try {
           discardPending();
-          await backend.deleteAccount(password && password.value);
+          await backend.deleteAccount(password && password.value, store.data.program.shareCode);
           close();
           toast('Your account has been deleted.', 'success');
         } catch (err) {

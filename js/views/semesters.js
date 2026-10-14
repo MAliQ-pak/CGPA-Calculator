@@ -1,11 +1,13 @@
 import { store, changed } from '../store.js';
 import {
-  uid, blankCourse, programCourses, programCredits, evaluateCourse, semesterTotals, overallTotals,
+  uid, blankCourse, programCourses, programCredits, evaluateCourse,
+  hasBreakdown, assessmentSummary, courseMarks, neededPercent, COMMON_SPLIT, semesterTotals, overallTotals,
   sortedScale, parseNum, maxGP, fmt, fmtCredits,
 } from '../calc.js';
 import { el, icon, openDialog, confirmDialog, toast } from '../ui.js';
 
 const expanded = new Set();
+const openBreakdowns = new Set();
 let openNext = null;
 
 // Lets other pages open a particular semester when they link here.
@@ -189,37 +191,209 @@ export function renderSemesters(root) {
     const select = el('select', { 'aria-label': 'Grade', dataset: { field: 'grade' } });
     select.append(el('option', { value: '' }, '—'));
     for (const g of sortedScale(data)) select.append(el('option', { value: g.grade }, `${g.grade} · ${Number(g.gp.toFixed(2))}`));
+    const toggle = el('button', { type: 'button', class: 'icon-btn breakdown-toggle', title: 'Marks breakdown', 'aria-expanded': 'false', 'aria-controls': `bd-${c.id}` }, icon('sliders', 18));
     const row = el('div', { class: 'course-row', dataset: { course: c.id } },
       el('label', { class: 'cell cell-name' },
         el('span', { class: 'cell-label' }, 'Course'),
         el('input', { type: 'text', value: c.name, placeholder: 'Course name', dataset: { field: 'name' } }),
       ),
-      el('label', { class: 'cell' },
+      el('label', { class: 'cell cell-credits' },
         el('span', { class: 'cell-label' }, 'Credits'),
         el('input', { type: 'number', min: '0', step: '0.5', inputmode: 'decimal', value: c.credits, dataset: { field: 'credits' } }),
       ),
-      el('label', { class: 'cell' },
+      el('label', { class: 'cell cell-marks' },
         el('span', { class: 'cell-label' }, 'Marks'),
         el('input', { type: 'number', min: '0', max: '100', step: 'any', inputmode: 'decimal', value: c.marks, placeholder: '0–100', dataset: { field: 'marks' } }),
       ),
-      el('label', { class: 'cell' }, el('span', { class: 'cell-label' }, 'Grade'), select),
-      el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove course', 'aria-label': `Remove ${c.name || 'course'}`, dataset: { action: 'course-remove' } }, icon('x', 18)),
+      el('label', { class: 'cell cell-grade' }, el('span', { class: 'cell-label' }, 'Grade'), select),
+      el('div', { class: 'row-actions' },
+        toggle,
+        el('button', { type: 'button', class: 'icon-btn remove', title: 'Remove course', 'aria-label': `Remove ${c.name || 'course'}`, dataset: { action: 'course-remove' } }, icon('x', 18)),
+      ),
       el('p', { class: 'row-error', dataset: { role: 'error' } }),
     );
+    toggle.addEventListener('click', () => {
+      if (openBreakdowns.has(c.id)) openBreakdowns.delete(c.id);
+      else openBreakdowns.add(c.id);
+      syncBreakdown(sem, c, row);
+    });
     refreshRow(row, c);
+    syncBreakdown(sem, c, row);
     return row;
   }
 
   function refreshRow(row, c) {
+    const label = c.name || 'course';
+    row.querySelector('[data-action="course-remove"]').setAttribute('aria-label', `Remove ${label}`);
+    row.querySelector('.breakdown-toggle').setAttribute('aria-label', `Marks breakdown for ${label}`);
+    row.querySelector('.breakdown-toggle').classList.toggle('has-breakdown', hasBreakdown(c));
     const r = evaluateCourse(data, c);
-    const hasMarks = parseNum(c.marks) !== null;
+    const marksInput = row.querySelector('[data-field="marks"]');
+    const fromBreakdown = hasBreakdown(c);
+    if (fromBreakdown) {
+      const m = courseMarks(c);
+      marksInput.disabled = true;
+      marksInput.value = m === null ? '' : String(m);
+      marksInput.placeholder = 'Pending';
+      marksInput.title = 'Worked out from the marks breakdown';
+    } else if (marksInput.disabled) {
+      marksInput.disabled = false;
+      marksInput.value = c.marks;
+      marksInput.placeholder = '0–100';
+      marksInput.title = '';
+    }
+    const hasMarks = courseMarks(c) !== null;
     const select = row.querySelector('[data-field="grade"]');
     select.disabled = hasMarks;
     select.value = hasMarks ? (r && r.grade) || '' : c.grade;
     select.title = hasMarks ? 'Worked out from your marks' : '';
-    row.querySelector('[data-field="marks"]').classList.toggle('invalid', Boolean(r && r.error && hasMarks && r.error.startsWith('Marks')));
+    marksInput.classList.toggle('invalid', Boolean(r && r.error && hasMarks && r.error.startsWith('Marks')));
     row.querySelector('[data-role="error"]').textContent = (r && r.error) || '';
     row.classList.toggle('has-error', Boolean(r && r.error));
+  }
+
+  // Shows or hides the marks breakdown panel under a course row.
+  function syncBreakdown(sem, c, row) {
+    const open = openBreakdowns.has(c.id);
+    row.querySelector('.breakdown-toggle').setAttribute('aria-expanded', String(open));
+    const existing = row.querySelector('.breakdown');
+    if (!open) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (!existing) row.append(breakdownPanel(sem, c, row));
+  }
+
+  function breakdownPanel(sem, c, row) {
+    const panel = el('div', { class: 'breakdown', id: `bd-${c.id}` });
+    const list = el('div', { class: 'bd-rows' });
+    const summary = el('div', { class: 'bd-summary', 'aria-live': 'polite' });
+    const card = () => row.closest('.sem-card');
+
+    const after = () => {
+      changed();
+      updateSummary();
+      refreshRow(row, c);
+      refreshTotals(card(), sem);
+    };
+
+    const itemRow = (a) => {
+      const removeBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Remove ${a.name || 'item'}`, onclick: () => {
+        c.assessments.splice(c.assessments.indexOf(a), 1);
+        if (!c.assessments.length) delete c.assessments;
+        render();
+        after();
+      } }, icon('x', 16));
+      const input = (field, attrs) => {
+        const node = el('input', { value: a[field], ...attrs });
+        node.addEventListener('input', () => {
+          a[field] = node.value;
+          if (field === 'name') removeBtn.setAttribute('aria-label', `Remove ${a.name || 'item'}`);
+          after();
+        });
+        return node;
+      };
+      const node = el('div', { class: 'bd-row' },
+        el('label', { class: 'cell bd-name' }, el('span', { class: 'cell-label' }, 'Item'), input('name', { type: 'text', placeholder: 'e.g. Quiz 1', 'aria-label': 'Item name' })),
+        el('label', { class: 'cell' }, el('span', { class: 'cell-label' }, 'Weight'),
+          el('div', { class: 'suffix-input' }, input('weight', { type: 'number', min: '0', max: '100', step: 'any', inputmode: 'decimal', 'aria-label': 'Weight (% of course)' }), el('span', { 'aria-hidden': 'true' }, '%'))),
+        el('label', { class: 'cell' }, el('span', { class: 'cell-label' }, 'Got'), input('obtained', { type: 'number', min: '0', step: 'any', inputmode: 'decimal', placeholder: '—', 'aria-label': 'Marks obtained' })),
+        el('label', { class: 'cell' }, el('span', { class: 'cell-label' }, 'Out of'), input('total', { type: 'number', min: '0', step: 'any', inputmode: 'decimal', placeholder: '—', 'aria-label': 'Out of' })),
+        removeBtn,
+      );
+      return node;
+    };
+
+    const addItem = (name = '', weight = '') => {
+      if (!c.assessments) c.assessments = [];
+      c.assessments.push({ id: uid(), name, weight: String(weight), obtained: '', total: '' });
+    };
+
+    function render() {
+      list.replaceChildren();
+      const items = c.assessments || [];
+      if (!items.length) {
+        panel.replaceChildren(
+          el('div', { class: 'bd-head' }, el('strong', {}, 'Marks breakdown'),
+            el('span', { class: 'muted small' }, 'Track quizzes, assignments, mids and the final as you get them back. When everything is in, the total becomes this course’s marks.')),
+          el('div', { class: 'btn-row' },
+            el('button', { type: 'button', class: 'btn btn-primary btn-small', onclick: () => {
+              for (const [n, w] of COMMON_SPLIT) addItem(n, w);
+              render();
+              after();
+              list.querySelector('input[aria-label="Marks obtained"]').focus();
+            } }, 'Use a common split'),
+            el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => {
+              addItem();
+              render();
+              after();
+              list.querySelector('input').focus();
+            } }, icon('plus', 16), 'Add my own'),
+          ),
+          el('p', { class: 'muted small' }, `Common split: ${COMMON_SPLIT.map(([n, w]) => `${n} ${w}%`).join(', ')}. Change any weight to match your course outline.`),
+        );
+        return;
+      }
+      items.forEach((a) => list.append(itemRow(a)));
+      panel.replaceChildren(
+        el('div', { class: 'bd-head' }, el('strong', {}, 'Marks breakdown'), el('span', { class: 'muted small' }, 'Weights are % of the course. Leave “Got” empty until you get it back.')),
+        el('div', { class: 'bd-cols', 'aria-hidden': 'true' }, el('span', {}, 'Item'), el('span', {}, 'Weight'), el('span', {}, 'Got'), el('span', {}, 'Out of'), el('span', {})),
+        list,
+        el('div', { class: 'bd-foot' },
+          el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => {
+            addItem();
+            render();
+            after();
+            list.querySelector('.bd-row:last-child input').focus();
+          } }, icon('plus', 16), 'Add item'),
+        ),
+        summary,
+      );
+      updateSummary();
+    }
+
+    function updateSummary() {
+      if (!summary.isConnected && !panel.contains(summary)) return;
+      const s = assessmentSummary(c);
+      summary.replaceChildren();
+      if (s.problem) {
+        summary.append(el('p', { class: 'bd-warn bad' }, icon('alert', 16), s.problem));
+        return;
+      }
+      if (Math.abs(s.weightTotal - 100) >= 0.001) {
+        summary.append(el('p', { class: 'bd-warn' }, icon('alert', 16), `Weights add up to ${s.weightTotal}%. Make them total 100% to get your final marks.`));
+      }
+      if (s.complete) {
+        const g = sortedScale(data).find((x) => s.earned >= x.min);
+        summary.append(el('div', { class: 'bd-total' },
+          el('span', {}, 'Course total'),
+          el('strong', {}, `${s.earned} / 100`),
+          g ? el('span', { class: 'pill' }, `${g.grade} · ${Number(g.gp.toFixed(2))}`) : null,
+        ));
+        return;
+      }
+      if (s.gradedWeight > 0) {
+        const pace = sortedScale(data).find((x) => s.percentSoFar >= x.min);
+        summary.append(el('p', { class: 'bd-progress' },
+          el('strong', {}, `${s.earned} of ${s.gradedWeight}%`), ' earned so far',
+          el('span', { class: 'muted' }, ` · ${Math.round(s.percentSoFar)}% average${pace ? `, on pace for ${/^[AEFHILMNORSX]/i.test(pace.grade) ? 'an' : 'a'} ${pace.grade}` : ''}`),
+        ));
+      }
+      if (s.remaining > 0) {
+        const goals = sortedScale(data).filter((g) => g.gp > 0);
+        summary.append(
+          el('p', { class: 'muted small bd-need-title' }, `To finish with each grade, you need this much of the remaining ${s.remaining}%:`),
+          el('div', { class: 'bd-needs' }, goals.map((g) => {
+            const n = neededPercent(s, g.min);
+            const text = n.status === 'secured' ? 'secured' : n.status === 'impossible' ? 'out of reach' : `${Math.ceil(n.pct)}%`;
+            return el('span', { class: `need need-${n.status}` }, el('b', {}, g.grade), text);
+          })),
+        );
+      }
+    }
+
+    render();
+    return panel;
   }
 
   function refreshTotals(card, sem) {

@@ -97,9 +97,24 @@ export async function saveData(uid, data) {
   await F.setDoc(F.doc(db, 'users', uid), { version: 1, data, updatedAt: F.serverTimestamp() });
 }
 
+// ---------- shared programs (programs/{code}) ----------
+
+export async function getSharedProgram(code) {
+  const snap = await F.getDoc(F.doc(db, 'programs', code));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function publishProgram(code, payload) {
+  await F.setDoc(F.doc(db, 'programs', code), { ...payload, createdBy: auth.currentUser.uid, updatedAt: F.serverTimestamp() });
+}
+
+export async function unpublishProgram(code) {
+  await F.deleteDoc(F.doc(db, 'programs', code));
+}
+
 // Deletes the user's data and account. Firebase asks for a recent sign-in first,
 // so we re-authenticate (Google popup, or the password the user just typed).
-export async function deleteAccount(password) {
+export async function deleteAccount(password, sharedCode) {
   const user = auth.currentUser;
   const provider = user.providerData[0] && user.providerData[0].providerId;
   if (provider === 'google.com') {
@@ -107,6 +122,7 @@ export async function deleteAccount(password) {
   } else {
     await A.reauthenticateWithCredential(user, A.EmailAuthProvider.credential(user.email, password));
   }
+  if (sharedCode) await F.deleteDoc(F.doc(db, 'programs', sharedCode)).catch(() => {});
   await F.deleteDoc(F.doc(db, 'users', user.uid));
   await A.deleteUser(user);
 }

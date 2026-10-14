@@ -1,14 +1,40 @@
 rules_version = '2';
 
-// Each user has one document, users/{uid}, that only they can read or write.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Each user has one document, users/{uid}, that only they can read or write.
     match /users/{uid} {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['version', 'data', 'updatedAt'])
         && request.resource.data.data is map;
+    }
+
+    // Shared programs: a course list (no marks) stored under a 6-character code.
+    // Anyone signed in can open one by its code, but nobody can list them.
+    // Only the person who shared it can change or remove it.
+    match /programs/{code} {
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create: if request.auth != null
+        && code.matches('^[A-HJ-NP-Z2-9]{6}$')
+        && request.resource.data.createdBy == request.auth.uid
+        && validProgram(request.resource.data);
+      allow update: if request.auth != null
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid
+        && validProgram(request.resource.data);
+      allow delete: if request.auth != null && resource.data.createdBy == request.auth.uid;
+    }
+
+    function validProgram(d) {
+      return d.keys().hasOnly(['name', 'university', 'ownerName', 'semesters', 'createdBy', 'updatedAt'])
+        && d.name is string && d.name.size() <= 80
+        && d.university is string && d.university.size() <= 120
+        && d.ownerName is string && d.ownerName.size() <= 60
+        && d.semesters is list && d.semesters.size() <= 16;
     }
   }
 }
