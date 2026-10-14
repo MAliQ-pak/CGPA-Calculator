@@ -1,17 +1,33 @@
 # CGPA-Calculator
 Aspiring student developer | Python enthusiast
 
-Project Overview:
-The "Personal CGPA per Semester Calculator" is a Python-based tool designed to streamline the process of calculating semester-wise CGPA. With a user-friendly interface, the program prompts users to input their marks for each course in a specific semester. It then computes the Cumulative Grade Point Average (CGPA) based on the provided data. The project aims to empower students with a convenient and efficient tool for tracking academic performance, providing insights into their progress over multiple semesters.
+**Live app:** https://maliq-pak.github.io/CGPA-Calculator/
 
-Key Features:
-Interactive input for GPA and credit hours per course.
-Dynamic adaptation to the number of courses in each semester.
-Accurate computation of CGPA using the weighted average method.
-Intuitive design catering to users from various academic backgrounds.
+## Project Overview
+The "Personal CGPA per Semester Calculator" started as a Python script I wrote in my first semester to calculate my GPA and CGPA. It has grown into a web app that runs in any browser, with nothing to install.
 
-Technologies Used:
-Python
+## Web app features
+- **Semester GPA and cumulative CGPA**, updated live as you type, using the credit-hour weighted average.
+- **Marks or grades:** enter marks out of 100, or pick a letter grade directly when you only know the grade.
+- **BSCS presets:** load any of semesters 1–8 with their courses and credit hours already filled in, or start a blank semester with your own courses.
+- **Earlier record:** enter your CGPA and credit hours so far instead of typing in every past semester.
+- **Target planner:** shows the GPA you need over your next credit hours to reach a target CGPA, and tells you when a target is out of reach.
+- **Editable grading scale** to match any university.
+- **Saved automatically** in your browser, with JSON backup export and import to move data between devices.
+- Works on phones and supports dark mode.
 
-Outcome:
-The "Personal CGPA per Semester Calculator" not only simplifies the often tedious task of CGPA calculation but also offers students a valuable insight into their academic journey. The tool promotes self-awareness and goal-setting by allowing users to monitor their progress and make informed decisions about their educational path.
+## Files
+| File | What it is |
+| --- | --- |
+| `index.html`, `style.css`, `app.js` | The web app (plain HTML, CSS and JavaScript, no build step) |
+| `modified_CGPA.py` | The original command-line calculator |
+
+## Running it
+- **Web app:** open `index.html` in a browser, or visit the live link above.
+- **Python script:** `python3 modified_CGPA.py`
+
+## Publishing on GitHub Pages
+In the repository go to **Settings → Pages**, set **Source** to *Deploy from a branch*, choose `main` and `/ (root)`, then save. The site appears at the live link above within a minute or two, and every push to `main` updates it.
+
+## Technologies Used
+HTML, CSS, JavaScript, Python
