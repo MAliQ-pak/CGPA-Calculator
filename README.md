@@ -28,6 +28,7 @@ Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Page
 | `js/firebase.js` | Everything that talks to Firebase |
 | `firebase-config.js` | Your Firebase project's web config |
 | `firestore.rules` | Database security rules |
+| `tests/` | Unit and browser tests, and the local dev server |
 | `modified_CGPA.py` | The original command-line calculator |
 
 ## Setting up Firebase (one time, about 5 minutes)
@@ -41,13 +42,23 @@ Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Page
 The values in `firebase-config.js` are meant to be public. What protects the data is the rules file in step 4.
 
 ## Running locally
-The app uses JavaScript modules, so it needs to be served over HTTP rather than opened as a file:
+The app uses JavaScript modules, so it needs to be served over HTTP rather than opened as a file. With Node.js installed:
 
 ```
-python3 -m http.server 8000
+npm install
+npm start
 ```
 
-Then open http://localhost:8000. Signing in works on `localhost` by default. The Python script still runs with `python3 modified_CGPA.py`.
+Then open http://localhost:4173. Signing in works on `localhost` by default. The Python script still runs with `python3 modified_CGPA.py`.
+
+## Tests
+```
+npm test            # everything
+npm run test:unit   # GPA and CGPA calculations (js/calc.js)
+npm run test:e2e    # the app in a real browser (Playwright)
+```
+
+The browser tests replace Firebase with `tests/mock-firebase.js`, so they need no Firebase project or network. They cover sign-up and sign-in, the setup wizard, entering grades, the dashboard, planner, program editing, backups, account deletion and phone layouts. GitHub runs all of them on every push and pull request (`.github/workflows/tests.yml`). The first time you run the browser tests locally, install the browser with `npx playwright install chromium`.
 
 ## Technologies Used
 HTML, CSS, JavaScript, Firebase (Authentication, Cloud Firestore), Python

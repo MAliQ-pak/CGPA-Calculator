@@ -211,6 +211,7 @@ export function renderSemesters(root) {
   }
 
   function refreshRow(row, c) {
+    row.querySelector('[data-action="course-remove"]').setAttribute('aria-label', `Remove ${c.name || 'course'}`);
     const r = evaluateCourse(data, c);
     const hasMarks = parseNum(c.marks) !== null;
     const select = row.querySelector('[data-field="grade"]');
