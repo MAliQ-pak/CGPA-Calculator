@@ -2,6 +2,7 @@
 import { store, changed } from '../store.js';
 import { progress, XP } from '../gamify.js';
 import { el, icon } from '../ui.js';
+import { badgeArt } from '../badge-art.js';
 
 const fmtDate = (iso) => {
   if (!iso) return '';
@@ -43,10 +44,14 @@ export function progressCard() {
     levelBlock(p),
     el('div', { class: 'badge-strip' },
       el('span', { class: 'muted small' }, `${p.earned} of ${p.badges.length} badges`),
-      el('span', { class: 'badge-emojis', 'aria-label': recent.map((b) => b.title).join(', ') }, recent.map((b) => el('span', { title: b.title }, b.emoji))),
+      el('span', { class: 'badge-row', role: 'img', 'aria-label': `Recent badges: ${recent.map((b) => b.title).join(', ')}` }, recent.map((b) => {
+        const art = badgeArt(b, 30);
+        art.title = b.title;
+        return art;
+      })),
     ),
     next ? el('a', { href: '#/achievements', class: 'next-badge' },
-      el('span', { class: 'next-emoji', 'aria-hidden': 'true' }, next.emoji),
+      el('span', { class: 'next-art locked' }, badgeArt(next, 40)),
       el('span', {}, el('strong', {}, `Next: ${next.title}`), el('span', { class: 'muted small' }, next.hint)),
       icon('chevron', 18)) : null,
   );
@@ -94,7 +99,7 @@ export function renderAchievements(root, { navigate }) {
       ),
     ),
     el('div', { class: 'badge-grid' }, p.badges.map((b) => el('article', { class: `badge-tile${b.done ? ' earned' : ''}` },
-      el('div', { class: 'badge-emoji', 'aria-hidden': 'true' }, b.emoji),
+      el('div', { class: 'badge-medal' }, badgeArt(b, 64)),
       el('strong', {}, b.title),
       b.done
         ? el('span', { class: 'badge-when' }, icon('check', 14), b.earnedOn ? `Unlocked ${fmtDate(b.earnedOn)}` : 'Unlocked')

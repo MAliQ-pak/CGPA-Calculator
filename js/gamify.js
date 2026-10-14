@@ -62,23 +62,24 @@ function facts(data) {
 }
 
 // Each badge: check(f, data) → { done, progress?: [current, goal] }. Hints say how to earn it.
+// category picks the badge's colour: habit (terracotta), improve (teal), milestone (gold).
 export const BADGES = [
-  { id: 'setup', emoji: '🎒', title: 'All set', hint: 'Finish setting up your account.', check: (f, d) => ({ done: d.profile.setupDone }) },
-  { id: 'first-semester', emoji: '🌱', title: 'First steps', hint: 'Add your first semester.', check: (f, d) => ({ done: d.semesters.length > 0 }) },
-  { id: 'first-grade', emoji: '✍️', title: 'On the board', hint: 'Enter marks or a grade for any course.', check: (f) => ({ done: f.graded > 0 }) },
-  { id: 'semester-sealed', emoji: '✅', title: 'Semester sealed', hint: 'Fill in every course of a semester.', check: (f) => ({ done: f.completeSemesters > 0 }) },
-  { id: 'detail-detective', emoji: '🔍', title: 'Detail detective', hint: 'Track a quiz, mid or assignment in a marks breakdown.', check: (f) => ({ done: f.usedBreakdown }) },
-  { id: 'goal-setter', emoji: '🎯', title: 'Goal setter', hint: 'Set a target CGPA in the Planner.', check: (f) => ({ done: f.target !== null && f.target > 0 }) },
-  { id: 'bullseye', emoji: '🏹', title: 'Bullseye', hint: 'Reach the target CGPA you set in the Planner.', check: (f) => ({ done: f.target !== null && f.totals.cgpa !== null && f.totals.cgpa + 1e-9 >= f.target }) },
-  { id: 'rising', emoji: '📈', title: 'On the rise', hint: 'Get a higher GPA than the semester before.', check: (f) => ({ done: f.gpas.some((g, i) => i > 0 && g > f.gpas[i - 1] + 1e-9) }) },
-  { id: 'comeback', emoji: '🔁', title: 'Comeback', hint: 'Improve a grade by retaking a course.', check: (f) => ({ done: f.comeback }) },
-  { id: 'personal-best', emoji: '🚀', title: 'Personal best', hint: 'Make your latest semester your best one yet.', check: (f) => ({ done: f.gpas.length >= 2 && f.gpas[f.gpas.length - 1] >= Math.max(...f.gpas) - 1e-9 && f.gpas[f.gpas.length - 1] > Math.min(...f.gpas) + 1e-9 }) },
-  { id: 'club-35', emoji: '⭐', title: '3.5 club', hint: 'Score a semester GPA of 3.5 or more.', check: (f) => ({ done: f.gpas.some((g) => g + 1e-9 >= f.max * 0.875) }) },
-  { id: 'straight-a', emoji: '🏆', title: 'Straight A’s', hint: 'Top grade in every course of a semester.', check: (f) => ({ done: f.straightA }) },
-  { id: 'halfway', emoji: '🧭', title: 'Halfway there', hint: 'Complete half of your program’s credit hours.', check: (f) => progressTo(f.totals.credits, f.programTotal / 2) },
-  { id: 'finish-line', emoji: '🎓', title: 'Finish line', hint: 'Complete all of your program’s credit hours.', check: (f) => progressTo(f.totals.credits, f.programTotal) },
-  { id: 'team-player', emoji: '🤝', title: 'Team player', hint: 'Share your course list with a code, or use a friend’s.', check: (f, d) => ({ done: Boolean(d.program.shareCode || d.program.copiedFrom) }) },
-  { id: 'regular', emoji: '🔥', title: 'Regular', hint: 'Check in 4 weeks in a row.', check: (f) => progressTo(f.streakBest, 4) },
+  { id: 'setup', category: 'habit', title: 'All set', hint: 'Finish setting up your account.', check: (f, d) => ({ done: d.profile.setupDone }) },
+  { id: 'first-semester', category: 'habit', title: 'First steps', hint: 'Add your first semester.', check: (f, d) => ({ done: d.semesters.length > 0 }) },
+  { id: 'first-grade', category: 'habit', title: 'On the board', hint: 'Enter marks or a grade for any course.', check: (f) => ({ done: f.graded > 0 }) },
+  { id: 'semester-sealed', category: 'habit', title: 'Semester sealed', hint: 'Fill in every course of a semester.', check: (f) => ({ done: f.completeSemesters > 0 }) },
+  { id: 'detail-detective', category: 'habit', title: 'Detail detective', hint: 'Track a quiz, mid or assignment in a marks breakdown.', check: (f) => ({ done: f.usedBreakdown }) },
+  { id: 'goal-setter', category: 'habit', title: 'Goal setter', hint: 'Set a target CGPA in the Planner.', check: (f) => ({ done: f.target !== null && f.target > 0 }) },
+  { id: 'bullseye', category: 'milestone', title: 'Bullseye', hint: 'Reach the target CGPA you set in the Planner.', check: (f) => ({ done: f.target !== null && f.totals.cgpa !== null && f.totals.cgpa + 1e-9 >= f.target }) },
+  { id: 'rising', category: 'improve', title: 'On the rise', hint: 'Get a higher GPA than the semester before.', check: (f) => ({ done: f.gpas.some((g, i) => i > 0 && g > f.gpas[i - 1] + 1e-9) }) },
+  { id: 'comeback', category: 'improve', title: 'Comeback', hint: 'Improve a grade by retaking a course.', check: (f) => ({ done: f.comeback }) },
+  { id: 'personal-best', category: 'improve', title: 'Personal best', hint: 'Make your latest semester your best one yet.', check: (f) => ({ done: f.gpas.length >= 2 && f.gpas[f.gpas.length - 1] >= Math.max(...f.gpas) - 1e-9 && f.gpas[f.gpas.length - 1] > Math.min(...f.gpas) + 1e-9 }) },
+  { id: 'club-35', category: 'milestone', title: '3.5 club', hint: 'Score a semester GPA of 3.5 or more.', check: (f) => ({ done: f.gpas.some((g) => g + 1e-9 >= f.max * 0.875) }) },
+  { id: 'straight-a', category: 'milestone', title: 'Straight A’s', hint: 'Top grade in every course of a semester.', check: (f) => ({ done: f.straightA }) },
+  { id: 'halfway', category: 'milestone', title: 'Halfway there', hint: 'Complete half of your program’s credit hours.', check: (f) => progressTo(f.totals.credits, f.programTotal / 2) },
+  { id: 'finish-line', category: 'milestone', title: 'Finish line', hint: 'Complete all of your program’s credit hours.', check: (f) => progressTo(f.totals.credits, f.programTotal) },
+  { id: 'team-player', category: 'habit', title: 'Team player', hint: 'Share your course list with a code, or use a friend’s.', check: (f, d) => ({ done: Boolean(d.program.shareCode || d.program.copiedFrom) }) },
+  { id: 'regular', category: 'habit', title: 'Regular', hint: 'Check in 4 weeks in a row.', check: (f) => progressTo(f.streakBest, 4) },
 ];
 
 function progressTo(current, goal) {

@@ -863,12 +863,15 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 .xp-bar { height: 9px; border-radius: 99px; background: var(--accent-soft); overflow: hidden; }
 .xp-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--honey), var(--accent)); transition: width 0.5s ease; }
 .badge-strip { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
-.badge-emojis { display: flex; gap: 4px; font-size: 1.25rem; }
+.badge-row { display: flex; gap: 2px; }
+.badge-art-wrap { display: inline-flex; flex: none; }
+.badge-art { display: block; }
+.locked .badge-art, .badge-tile:not(.earned) .badge-art { filter: grayscale(1); opacity: 0.45; }
 .next-badge { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: 14px; padding: 12px; border-radius: var(--radius-sm); background: var(--honey-soft); color: var(--text); }
 .next-badge:hover { filter: brightness(0.98); }
 .next-badge > span:nth-child(2) { display: flex; flex-direction: column; }
 .next-badge .icon { color: var(--muted); }
-.next-emoji { font-size: 1.5rem; filter: grayscale(0.6); }
+.next-art { display: inline-flex; }
 
 .ach-top { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; }
 .ach-top .card + .card { margin-top: 0; }
@@ -881,9 +884,9 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 .xp-how li strong { display: inline-block; min-width: 38px; color: var(--accent); }
 .badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .badge-tile { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px dashed var(--border-strong); }
-.badge-tile .badge-emoji { font-size: 2rem; filter: grayscale(1); opacity: 0.45; }
+.badge-medal { display: flex; margin-bottom: 2px; }
 .badge-tile.earned { border: 1px solid transparent; background: linear-gradient(160deg, var(--honey-soft), var(--surface) 70%); box-shadow: var(--shadow); }
-.badge-tile.earned .badge-emoji { filter: none; opacity: 1; }
+.badge-tile.earned .badge-medal .badge-art { filter: drop-shadow(0 3px 6px rgba(120, 60, 20, 0.18)); }
 .badge-when { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; color: var(--good); }
 .badge-progress { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
 
@@ -893,6 +896,9 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 @media (max-width: 560px) {
   .badge-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .badge-tile { padding: 12px; }
-  .badge-tile .badge-emoji { font-size: 1.7rem; }
+  .badge-medal .badge-art { width: 54px; height: 54px; }
   .level.large .level-badge { width: 64px; height: 64px; }
 }
+
+.toast-badge { display: inline-flex; align-items: center; gap: 8px; }
+.toast:has(.toast-badge) > .icon { display: none; }
