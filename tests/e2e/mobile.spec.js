@@ -4,7 +4,7 @@ test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true
 
 const data = setupDone({ semesters: [{ id: 's1', name: 'Semester 1', courses: [{ id: 'a', name: 'ITC', credits: '3', marks: '85', grade: '' }, { id: 'b', name: 'FOP', credits: '4', marks: '72', grade: '' }] }] });
 
-for (const route of ['dashboard', 'semesters', 'planner', 'settings', 'program', 'report']) {
+for (const route of ['dashboard', 'semesters', 'planner', 'settings', 'program', 'report', 'achievements']) {
   test(`${route} fits a phone screen`, async ({ page }) => {
     await seedUser(page, ALI, data);
     await page.goto(`/#/${route}`);

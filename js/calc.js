@@ -48,6 +48,8 @@ export function freshData() {
     prior: { cgpa: '', credits: '' },
     target: { cgpa: '', credits: '' },
     retakePolicy: 'latest', // which attempt of a repeated course counts: 'latest' | 'best'
+    // Achievements: badge id → date earned; `initialized` stops a flood of badges for existing users.
+    gamify: { enabled: true, initialized: false, badges: {}, streak: { week: '', count: 0, best: 0 } },
   };
 }
 
@@ -113,6 +115,18 @@ export function normalize(data) {
   }
   if (data.prior) base.prior = { cgpa: str(data.prior.cgpa), credits: str(data.prior.credits) };
   if (data.retakePolicy === 'best') base.retakePolicy = 'best';
+  if (data.gamify && typeof data.gamify === 'object') {
+    const g = data.gamify;
+    const badges = {};
+    if (g.badges && typeof g.badges === 'object') for (const [k, v] of Object.entries(g.badges)) badges[str(k)] = str(v);
+    const st = g.streak || {};
+    base.gamify = {
+      enabled: g.enabled !== false,
+      initialized: Boolean(g.initialized),
+      badges,
+      streak: { week: str(st.week), count: Number(st.count) || 0, best: Number(st.best) || 0 },
+    };
+  }
   if (data.target) base.target = { cgpa: str(data.target.cgpa), credits: str(data.target.credits) };
   return base;
 }
