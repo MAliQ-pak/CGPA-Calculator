@@ -11,10 +11,15 @@ export const store = {
   status: 'saved', // 'saving' | 'saved' | 'offline' | 'error'
 };
 
-const listeners = { status: new Set() };
+const listeners = { status: new Set(), change: new Set() };
 let timer = null;
 let pending = 0;
 let dirty = false;
+
+// Called after every change to the data (used for achievements).
+export function onChange(fn) {
+  listeners.change.add(fn);
+}
 
 export function onStatus(fn) {
   listeners.status.add(fn);
@@ -53,13 +58,15 @@ export function changed() {
   setStatus(navigator.onLine ? 'saving' : 'offline');
   clearTimeout(timer);
   timer = setTimeout(flush, SAVE_DELAY);
+  for (const fn of listeners.change) fn();
 }
 
-// Files from before accounts had a setup or program keep the user's current ones.
+// Files from before accounts had a setup, program or achievements keep the user's current ones.
 export function replaceData(data) {
   const next = normalize(data);
   if (!data.profile) next.profile = store.data.profile;
   if (!data.program) next.program = store.data.program;
+  if (!data.gamify) next.gamify = store.data.gamify;
   store.data = next;
   changed();
 }

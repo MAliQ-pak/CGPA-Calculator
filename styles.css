@@ -844,3 +844,55 @@ input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
   .report-sheet { border: 0; box-shadow: none; border-radius: 0; padding: 0; max-width: none; }
   .report-stat, .report-head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---------- achievements ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2000; }
+.dash-side { display: flex; flex-direction: column; gap: 16px; }
+.dash-side .card + .card { margin-top: 0; }
+.level { display: flex; align-items: center; gap: 14px; }
+.level-badge { width: 58px; height: 58px; flex: none; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; color: #fff; background: linear-gradient(145deg, #de6a32, #b9481b); box-shadow: 0 6px 16px rgba(194, 83, 31, 0.28); position: relative; }
+.level-badge::after { content: ""; position: absolute; top: 7px; right: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--honey); }
+.level-badge span { font-size: 0.66rem; font-weight: 700; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
+.level-badge strong { font-size: 1.45rem; font-weight: 800; }
+.level.large .level-badge { width: 76px; height: 76px; border-radius: 22px; }
+.level.large .level-badge strong { font-size: 1.9rem; }
+.level-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.level-title strong { font-size: 1.08rem; font-weight: 800; }
+.level.large .level-title strong { font-size: 1.4rem; }
+.xp-bar { height: 9px; border-radius: 99px; background: var(--accent-soft); overflow: hidden; }
+.xp-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--honey), var(--accent)); transition: width 0.5s ease; }
+.badge-strip { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
+.badge-emojis { display: flex; gap: 4px; font-size: 1.25rem; }
+.next-badge { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: 14px; padding: 12px; border-radius: var(--radius-sm); background: var(--honey-soft); color: var(--text); }
+.next-badge:hover { filter: brightness(0.98); }
+.next-badge > span:nth-child(2) { display: flex; flex-direction: column; }
+.next-badge .icon { color: var(--muted); }
+.next-emoji { font-size: 1.5rem; filter: grayscale(0.6); }
+
+.ach-top { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; }
+.ach-top .card + .card { margin-top: 0; }
+.ach-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.ach-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--radius-sm); background: var(--surface-2); text-align: center; }
+.ach-stat strong { font-size: 1.35rem; font-weight: 800; }
+.ach-stat span { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+.xp-how h3 { font-size: 1rem; margin-bottom: 10px; }
+.xp-how ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 0.92rem; }
+.xp-how li strong { display: inline-block; min-width: 38px; color: var(--accent); }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.badge-tile { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px dashed var(--border-strong); }
+.badge-tile .badge-emoji { font-size: 2rem; filter: grayscale(1); opacity: 0.45; }
+.badge-tile.earned { border: 1px solid transparent; background: linear-gradient(160deg, var(--honey-soft), var(--surface) 70%); box-shadow: var(--shadow); }
+.badge-tile.earned .badge-emoji { filter: none; opacity: 1; }
+.badge-when { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; color: var(--good); }
+.badge-progress { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+
+@media (max-width: 860px) {
+  .ach-top { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .badge-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .badge-tile { padding: 12px; }
+  .badge-tile .badge-emoji { font-size: 1.7rem; }
+  .level.large .level-badge { width: 64px; height: 64px; }
+}

@@ -17,6 +17,7 @@ GradePoint started as a Python script I wrote in my first semester to work out m
 - **Planner:** the GPA you need over your next credit hours to reach a target CGPA, plus a table of common targets.
 - **What if:** try grades for a semester's courses, including ones still in progress (with "on pace" grades from the marks breakdown), and see the resulting semester GPA and CGPA. Nothing is saved.
 - **Share your result:** a branded image of your CGPA (optionally without your name or semester chart) to download or share, and a printable PDF summary of every semester, grade and GPA.
+- **Achievements:** levels (Fresher to Legend) and 16 badges for good habits, improvement and milestones, with a weekly check-in streak and a little confetti when you unlock one. XP comes from what you've actually entered, so it can't be farmed. Can be turned off in Settings.
 - **Settings:** edit your name, choose a light, dark or system theme, edit the grading scale to match your university, download or restore a backup, and delete your account.
 - Saves automatically, keeps working offline (changes sync when you're back online), and works on phones. It can be added to a home screen like an app.
 
@@ -33,6 +34,7 @@ Plain HTML, CSS and JavaScript modules with no build step, hosted on GitHub Page
 | `js/firebase.js` | Everything that talks to Firebase |
 | `js/sharing.js` | Share codes and copying a friend's program |
 | `js/card.js` | Draws the shareable result card |
+| `js/gamify.js`, `js/achievements.js` | Levels, badges and streak; recording and celebrating new badges |
 | `firebase-config.js` | Your Firebase project's web config |
 | `firestore.rules` | Database security rules |
 | `tests/` | Unit and browser tests, and the local dev server |

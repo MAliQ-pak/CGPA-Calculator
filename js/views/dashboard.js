@@ -4,6 +4,7 @@ import { el, icon } from '../ui.js';
 import { gpaChart } from '../chart.js';
 import { requestOpen } from './semesters.js';
 import { openShareDialog } from './share.js';
+import { progressCard } from './achievements.js';
 
 export function renderDashboard(root, { navigate }) {
   const data = store.data;
@@ -30,6 +31,8 @@ export function renderDashboard(root, { navigate }) {
         el('a', { href: '#/semesters', class: 'btn btn-ghost' }, 'I already have a CGPA'),
       ),
     ));
+    const card = progressCard();
+    if (card) root.append(card);
     return;
   }
 
@@ -115,7 +118,7 @@ export function renderDashboard(root, { navigate }) {
     ),
   );
 
-  root.append(greeting, el('div', { class: 'dash-grid' }, el('div', { class: 'dash-main' }, hero, stats, trend), el('div', { class: 'dash-side' }, list)));
+  root.append(greeting, el('div', { class: 'dash-grid' }, el('div', { class: 'dash-main' }, hero, stats, trend), el('div', { class: 'dash-side' }, progressCard(), list)));
   return () => chart && chart.dispose();
 }
 

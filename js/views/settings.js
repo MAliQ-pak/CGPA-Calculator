@@ -11,6 +11,7 @@ export function renderSettings(root, { refreshUser, runSetup }) {
     profileSection(refreshUser),
     programSection(runSetup),
     appearanceSection(),
+    achievementsSection(),
     scaleSection(),
     retakeSection(),
     dataSection(),
@@ -73,6 +74,19 @@ function programSection(runSetup) {
       el('a', { href: '#/program/share', class: 'btn btn-ghost btn-small' }, icon('share', 16), program.shareCode ? `Shared · ${program.shareCode}` : 'Share with friends'),
       el('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: runSetup }, 'Run setup again'),
     ),
+  );
+}
+
+function achievementsSection() {
+  const box = el('input', { type: 'checkbox', checked: store.data.gamify.enabled });
+  box.addEventListener('change', () => {
+    store.data.gamify.enabled = box.checked;
+    changed();
+  });
+  return section('Achievements', 'Levels, badges and a little confetti when you earn one.',
+    el('label', { class: 'check-row' }, box,
+      el('span', {}, el('strong', {}, 'Show achievements'),
+        el('span', { class: 'muted' }, ' Badges are still recorded while this is off, so nothing is lost.'))),
   );
 }
 

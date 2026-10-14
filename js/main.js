@@ -11,6 +11,8 @@ import { renderSetup } from './views/setup.js';
 import { renderReport } from './views/report.js';
 import { applyTheme } from './theme.js';
 import { rememberPendingJoin, pendingJoin } from './sharing.js';
+import { startAchievements } from './achievements.js';
+import { renderAchievements } from './views/achievements.js';
 import { cleanShareCode } from './calc.js';
 
 const root = document.getElementById('app');
@@ -23,6 +25,7 @@ const ROUTES = {
   // Reached from Settings, so it isn't in the navigation and highlights Settings.
   program: { title: 'Program & courses', icon: 'book', render: renderProgram, parent: 'settings' },
   report: { title: 'PDF summary', icon: 'download', render: renderReport, parent: 'dashboard' },
+  achievements: { title: 'Achievements', icon: 'trophy', render: renderAchievements, parent: 'dashboard' },
 };
 
 let shell = null;
@@ -237,6 +240,7 @@ async function start() {
       try {
         const { isNew } = await loadFor(user);
         await offerLegacyImport(isNew);
+        startAchievements();
         if (store.data.profile.setupDone) {
           if (pendingJoin()) history.replaceState(null, '', '#/program');
           renderShell();
