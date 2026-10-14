@@ -1,16 +1,16 @@
-// Light / dark / system theme, remembered per device.
+// Light (default) / dark / system theme, remembered per device.
 const KEY = 'gradepoint:theme';
 
 export function getTheme() {
   try {
-    return localStorage.getItem(KEY) || 'system';
+    return localStorage.getItem(KEY) || 'light';
   } catch (e) {
-    return 'system';
+    return 'light';
   }
 }
 
 export function applyTheme(theme = getTheme()) {
-  if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+  if (theme === 'light') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
 }
 
